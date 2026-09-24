@@ -1,0 +1,7 @@
+git remote -v
+git remote add origin https://github.com/kumarlalitss166/Expense-Tracker-Claude-Code.git
+git push -u origin HEAD
+
+- Username: your GitHub username
+- Password: your access token (not your GitHub password)
+
