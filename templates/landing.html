@@ -5,59 +5,101 @@
 {% block content %}
 
 <section class="hero">
-    <div class="hero-inner">
-        <div class="hero-badge">Personal Finance Tracker</div>
+    <div class="hero-copy">
         <h1 class="hero-title">
-            Know where your<br>
-            <em>money goes</em>
+            Track every rupee.<br>
+            <em>Own your finances.</em>
         </h1>
         <p class="hero-subtitle">
-            Log expenses, understand your spending patterns,
-            and take control of your financial life —
-            one transaction at a time.
+            Log expenses, see where your money goes, and stay in control —
+            without the spreadsheet headache.
         </p>
         <div class="hero-actions">
-            <a href="{{ url_for('register') }}" class="btn-primary">Start tracking free</a>
-            <a href="{{ url_for('login') }}" class="btn-ghost">Sign in</a>
+            <a href="{{ url_for('register') }}" class="btn-primary">Get started — it's free</a>
         </div>
     </div>
-    <div class="hero-visual">
-        <div class="mock-card">
-            <div class="mock-card-header">
-                <span class="mock-label">March 2026</span>
-                <span class="mock-total">₹12,450</span>
+
+    <div class="hero-preview">
+        <div class="dash-grid">
+            <div class="dash-card dash-month">
+                <div class="dash-card-top">
+                    <span class="dash-label">This Month</span>
+                    <span class="dash-chip dash-chip-down">↓ 12%</span>
+                </div>
+                <div class="dash-amount">₹18,420</div>
+                <div class="dash-bars">
+                    <div class="dash-bar-row">
+                        <span class="dash-cat">Food</span>
+                        <div class="dash-bar-track">
+                            <div class="dash-bar dash-bar-food" style="width: 72%"></div>
+                        </div>
+                    </div>
+                    <div class="dash-bar-row">
+                        <span class="dash-cat">Transport</span>
+                        <div class="dash-bar-track">
+                            <div class="dash-bar dash-bar-transport" style="width: 48%"></div>
+                        </div>
+                    </div>
+                    <div class="dash-bar-row">
+                        <span class="dash-cat">Shopping</span>
+                        <div class="dash-bar-track">
+                            <div class="dash-bar dash-bar-shopping" style="width: 38%"></div>
+                        </div>
+                    </div>
+                    <div class="dash-bar-row">
+                        <span class="dash-cat">Bills</span>
+                        <div class="dash-bar-track">
+                            <div class="dash-bar dash-bar-bills" style="width: 55%"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="mock-bars">
-                <div class="mock-bar-row">
-                    <span class="mock-cat">Bills</span>
-                    <div class="mock-bar-track">
-                        <div class="mock-bar" style="width: 72%"></div>
-                    </div>
-                    <span class="mock-amt">₹4,500</span>
-                </div>
-                <div class="mock-bar-row">
-                    <span class="mock-cat">Food</span>
-                    <div class="mock-bar-track">
-                        <div class="mock-bar mock-bar-2" style="width: 52%"></div>
-                    </div>
-                    <span class="mock-amt">₹3,200</span>
-                </div>
-                <div class="mock-bar-row">
-                    <span class="mock-cat">Health</span>
-                    <div class="mock-bar-track">
-                        <div class="mock-bar mock-bar-3" style="width: 33%"></div>
-                    </div>
-                    <span class="mock-amt">₹2,050</span>
-                </div>
-                <div class="mock-bar-row">
-                    <span class="mock-cat">Transport</span>
-                    <div class="mock-bar-track">
-                        <div class="mock-bar mock-bar-4" style="width: 28%"></div>
-                    </div>
-                    <span class="mock-amt">₹1,800</span>
+
+            <div class="dash-card dash-recent">
+                <span class="dash-label">Recent</span>
+                <ul class="dash-txns">
+                    <li>
+                        <span class="dash-dot dash-dot-food"></span>
+                        <span class="dash-txn-name">Groceries</span>
+                        <span class="dash-txn-amt">₹850</span>
+                    </li>
+                    <li>
+                        <span class="dash-dot dash-dot-transport"></span>
+                        <span class="dash-txn-name">Uber</span>
+                        <span class="dash-txn-amt">₹320</span>
+                    </li>
+                    <li>
+                        <span class="dash-dot dash-dot-shopping"></span>
+                        <span class="dash-txn-name">Amazon</span>
+                        <span class="dash-txn-amt">₹1,299</span>
+                    </li>
+                    <li>
+                        <span class="dash-dot dash-dot-bills"></span>
+                        <span class="dash-txn-name">Electricity</span>
+                        <span class="dash-txn-amt">₹2,100</span>
+                    </li>
+                    <li>
+                        <span class="dash-dot dash-dot-food"></span>
+                        <span class="dash-txn-name">Cafe</span>
+                        <span class="dash-txn-amt">₹450</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="dash-card dash-cats">
+                <span class="dash-label">Categories</span>
+                <div class="dash-donut-wrap">
+                    <div class="dash-donut" aria-hidden="true"></div>
+                    <ul class="dash-legend">
+                        <li><span class="dash-dot dash-dot-food"></span> Food <em>35%</em></li>
+                        <li><span class="dash-dot dash-dot-transport"></span> Transport <em>22%</em></li>
+                        <li><span class="dash-dot dash-dot-shopping"></span> Shopping <em>18%</em></li>
+                        <li><span class="dash-dot dash-dot-bills"></span> Bills <em>25%</em></li>
+                    </ul>
                 </div>
             </div>
         </div>
+        <p class="dash-footer">4 categories tracked</p>
     </div>
 </section>
 
