@@ -16,6 +16,9 @@
         </p>
         <div class="hero-actions">
             <a href="{{ url_for('register') }}" class="btn-primary">Get started — it's free</a>
+            <button type="button" class="btn-ghost" id="see-how-it-works" aria-haspopup="dialog">
+                See how it works
+            </button>
         </div>
     </div>
 
@@ -130,5 +133,25 @@
         <a href="{{ url_for('register') }}" class="btn-primary">Create free account</a>
     </div>
 </section>
+
+<div class="modal-overlay" id="how-it-works-modal" hidden aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="how-it-works-title">
+        <div class="modal-header">
+            <h2 class="modal-title" id="how-it-works-title">See how it works</h2>
+            <button type="button" class="modal-close" id="how-it-works-close" aria-label="Close">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-video">
+                <iframe
+                    id="how-it-works-video"
+                    data-src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1"
+                    title="Spendly product demo"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen
+                ></iframe>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% endblock %}
