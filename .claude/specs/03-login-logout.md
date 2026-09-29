@@ -88,20 +88,20 @@ No new dependencies.
 
 - [x] Correct credentials for `demo@spendly.com` / `demo123` sign in and land on `/profile`
 - [x] Demo user can sign in even though the password is only 7 characters
-- [ ] A user registered via `/register` can sign in with their password
-- [ ] Wrong password shows "Invalid email or password." and does not set a session
-- [ ] Unknown email shows the same generic message (no "user not found")
-- [ ] Empty email or empty password shows "Please enter your email and password." and does not set a session
-- [ ] Login failures respond with HTTP 400
-- [ ] After sign-in, `base.html` nav shows "Sign out" instead of "Sign in" / "Get started"
-- [ ] "Sign out" is visible and clickable at ≤600px width
-- [ ] `/logout` clears the session and redirects to `/`
-- [ ] After logout, the nav is back to "Sign in" / "Get started"
-- [ ] Visiting `/logout` without being signed in does not error
-- [ ] Visiting `/profile` while signed out redirects to `/login`
-- [ ] Signed-in users visiting `/login` or `/register` are redirected to `/profile`
-- [ ] `GET /login` still renders for signed-out visitors
-- [ ] App starts with no errors and `/`, `/register`, `/terms` still work
+- [x] A user registered via `/register` can sign in with their password
+- [x] Wrong password shows "Invalid email or password." and does not set a session
+- [x] Unknown email shows the same generic message (no "user not found")
+- [x] Empty email or empty password shows "Please enter your email and password." and does not set a session
+- [x] Login failures respond with HTTP 400
+- [x] After sign-in, `base.html` nav shows "Sign out" instead of "Sign in" / "Get started"
+- [x] "Sign out" is visible and clickable at ≤600px width
+- [x] `/logout` clears the session and redirects to `/`
+- [x] After logout, the nav is back to "Sign in" / "Get started"
+- [x] Visiting `/logout` without being signed in does not error
+- [x] Visiting `/profile` while signed out redirects to `/login`
+- [x] Signed-in users visiting `/login` or `/register` are redirected to `/profile`
+- [x] `GET /login` still renders for signed-out visitors
+- [x] App starts with no errors and `/`, `/register`, `/terms` still work
 
 
 
