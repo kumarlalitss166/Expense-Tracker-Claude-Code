@@ -9,12 +9,14 @@ Implement sign-in and sign-out for Spendly. Registration can already create acco
 - Step 1 — Database Setup (complete): `users` table, `get_db()`
 - Step 2 — Registration (complete): password hashing via `generate_password_hash`, `/register` works
 
+
+
 ## Routes
 
 - `GET /login` — render sign-in form (already exists) — public. If already signed in, redirect to `/profile`
 - `POST /login` — verify email + password, set session, redirect to `/profile` — public
 - `GET /logout` — clear session, redirect to `/` — public (harmless if not signed in). **No** `@login_required`
-- `GET /profile` — existing stub, **now behind `@login_required`** — logged-in
+- `GET /profile` — existing stub, **now behind** `@login_required` — logged-in
 
 `/expenses/*` placeholders stay stubs.
 
@@ -26,8 +28,10 @@ No database changes. Password verification reads `users.password_hash` only.
 
 - **Create:** none
 - **Modify:**
-  - `templates/base.html` — nav is hard-coded "Sign in" / "Get started". Make it session-aware via `is_logged_in` from a context processor. The **right-hand link must keep `class="nav-cta"`** so it survives the ≤600px rule in `static/css/style.css` (`.nav-links a:not(.nav-cta) { display: none; }`). Signed in → one link: `<a href="{{ url_for('logout') }}" class="nav-cta">Sign out</a>`.
+  - `templates/base.html` — nav is hard-coded "Sign in" / "Get started". Make it session-aware via `is_logged_in` from a context processor. The **right-hand link must keep** `class="nav-cta"` so it survives the ≤600px rule in `static/css/style.css` (`.nav-links a:not(.nav-cta) { display: none; }`). Signed in → one link: `<a href="{{ url_for('logout') }}" class="nav-cta">Sign out</a>`.
   - `templates/login.html` — no change. Already posts to `/login` and renders `{{ error }}`. Accept that a failed submit clears the fields.
+
+
 
 ## Files to change
 
@@ -46,6 +50,8 @@ Do **not** import `g` in this step unless you also add a `before_request` user l
 ## Files to create
 
 - None
+
+
 
 ## New dependencies
 
@@ -76,10 +82,12 @@ No new dependencies.
 - Do not log or print the plaintext password
 - No CSRF protection — acceptable for this learning project
 
+
+
 ## Definition of done
 
-- [ ] Correct credentials for `demo@spendly.com` / `demo123` sign in and land on `/profile`
-- [ ] Demo user can sign in even though the password is only 7 characters
+- [x] Correct credentials for `demo@spendly.com` / `demo123` sign in and land on `/profile`
+- [x] Demo user can sign in even though the password is only 7 characters
 - [ ] A user registered via `/register` can sign in with their password
 - [ ] Wrong password shows "Invalid email or password." and does not set a session
 - [ ] Unknown email shows the same generic message (no "user not found")
@@ -95,6 +103,8 @@ No new dependencies.
 - [ ] `GET /login` still renders for signed-out visitors
 - [ ] App starts with no errors and `/`, `/register`, `/terms` still work
 
+
+
 ## Notes for later steps
 
 - Step 4 (profile) consumes `session["user_id"]` and `@login_required`
@@ -104,3 +114,4 @@ No new dependencies.
 - Unknown-email vs wrong-password timing is a minor enumeration signal — out of scope
 - A "registered successfully" flash can be added here or in Step 4
 - Landing page CTAs still show when signed in — out of scope
+
