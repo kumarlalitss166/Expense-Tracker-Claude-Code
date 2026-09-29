@@ -1,11 +1,33 @@
+import os
 import sqlite3
+from functools import wraps
 
-from flask import Flask, redirect, render_template, request, url_for
-from werkzeug.security import generate_password_hash
+from flask import Flask, redirect, render_template, request, session, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import get_db, init_db, seed_db
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+
+
+# ------------------------------------------------------------------ #
+# Auth helpers                                                        #
+# ------------------------------------------------------------------ #
+
+def login_required(view):
+    """Redirect to /login when nobody is signed in."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+@app.context_processor
+def inject_auth():
+    return {"is_logged_in": "user_id" in session}
 
 
 # ------------------------------------------------------------------ #
@@ -20,6 +42,8 @@ def landing():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "GET":
+        if "user_id" in session:
+            return redirect(url_for("profile"))
         return render_template("register.html")
 
     name = request.form.get("name", "").strip()
@@ -68,9 +92,35 @@ def register():
     return redirect(url_for("login"))
 
 
-@app.route("/login")
+@app.route("/login", methods=["GET", "POST"])
 def login():
-    return render_template("login.html")
+    if request.method == "GET":
+        if "user_id" in session:
+            return redirect(url_for("profile"))
+        return render_template("login.html")
+
+    email = request.form.get("email", "").strip().lower()
+    password = request.form.get("password", "")
+
+    if not email or not password:
+        return render_template(
+            "login.html", error="Please enter your email and password."
+        ), 400
+
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT id, password_hash FROM users WHERE email = ?", (email,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+    if row is None or not check_password_hash(row["password_hash"], password):
+        return render_template("login.html", error="Invalid email or password."), 400
+
+    session.clear()
+    session["user_id"] = row["id"]
+    return redirect(url_for("profile"))
 
 
 @app.route("/terms")
@@ -84,10 +134,12 @@ def terms():
 
 @app.route("/logout")
 def logout():
-    return "Logout — coming in Step 3"
+    session.clear()
+    return redirect(url_for("landing"))
 
 
 @app.route("/profile")
+@login_required
 def profile():
     return "Profile page — coming in Step 4"
 
