@@ -1,8 +1,9 @@
 import os
 import sqlite3
+from datetime import datetime
 from functools import wraps
 
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import Flask, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import get_db, init_db, seed_db
@@ -28,6 +29,28 @@ def login_required(view):
 @app.context_processor
 def inject_auth():
     return {"is_logged_in": "user_id" in session}
+
+
+# ------------------------------------------------------------------ #
+# Session hardening                                                   #
+# ------------------------------------------------------------------ #
+
+@app.before_request
+def load_user():
+    """Attach the signed-in user to g, or drop a stale session cookie."""
+    g.user = None
+    if request.endpoint == "static" or "user_id" not in session:
+        return
+    conn = get_db()
+    try:
+        g.user = conn.execute(
+            "SELECT id, name, email, created_at FROM users WHERE id = ?",
+            (session["user_id"],),
+        ).fetchone()
+    finally:
+        conn.close()
+    if g.user is None:
+        session.clear()
 
 
 # ------------------------------------------------------------------ #
@@ -141,7 +164,56 @@ def logout():
 @app.route("/profile")
 @login_required
 def profile():
-    return "Profile page — coming in Step 4"
+    conn = get_db()
+    try:
+        stats = conn.execute(
+            """
+            SELECT COUNT(*) AS n, COALESCE(SUM(amount), 0) AS total
+            FROM expenses WHERE user_id = ?
+            """,
+            (g.user["id"],),
+        ).fetchone()
+        rows = conn.execute(
+            """
+            SELECT category, COUNT(*) AS n, COALESCE(SUM(amount), 0) AS total
+            FROM expenses WHERE user_id = ?
+            GROUP BY category ORDER BY total DESC
+            """,
+            (g.user["id"],),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    expense_count = stats["n"]
+    total_spend = stats["total"]
+
+    max_total = max((row["total"] for row in rows), default=0)
+    breakdown = [
+        {
+            "category": row["category"],
+            "count": row["n"],
+            "total": row["total"],
+            "bar_pct": round(row["total"] / max_total * 100, 1) if max_total else 0,
+        }
+        for row in rows
+    ]
+
+    member_since = None
+    if g.user["created_at"]:
+        try:
+            member_since = datetime.strptime(
+                g.user["created_at"], "%Y-%m-%d %H:%M:%S"
+            ).strftime("%b %Y")
+        except ValueError:
+            member_since = None
+
+    return render_template(
+        "profile.html",
+        member_since=member_since,
+        expense_count=expense_count,
+        total_spend=total_spend,
+        breakdown=breakdown,
+    )
 
 
 @app.route("/expenses/add")
