@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Profile · Spendly{% endblock %}
+
+{% block content %}
+
+<section class="profile-section">
+    <header class="profile-header">
+        <h1 class="profile-title">Your profile</h1>
+        <div class="profile-meta">
+            <p class="profile-name">{{ g.user.name }}</p>
+            <p class="profile-email">{{ g.user.email }}</p>
+            {% if member_since %}
+            <p class="profile-since">Member since {{ member_since }}</p>
+            {% endif %}
+        </div>
+    </header>
+
+    {% if expense_count > 0 %}
+    <div class="profile-stats">
+        <div class="profile-stat-card">
+            <span class="profile-stat-label">Total spent</span>
+            <span class="profile-stat-value">₹{{ "%.2f"|format(total_spend) }}</span>
+        </div>
+        <div class="profile-stat-card">
+            <span class="profile-stat-label">Expenses</span>
+            <span class="profile-stat-value">{{ expense_count }}</span>
+        </div>
+    </div>
+
+    <div class="profile-breakdown">
+        <h2 class="profile-heading">By category</h2>
+        <div class="profile-bars">
+            {% for row in breakdown %}
+            <div class="profile-bar-row">
+                <span class="profile-cat">{{ row.category }}</span>
+                <div class="profile-bar-track">
+                    <div class="profile-bar" style="width: {{ row.bar_pct }}%"></div>
+                </div>
+                <span class="profile-cat-amt">₹{{ "%.2f"|format(row.total) }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="profile-empty">
+        <p class="profile-empty-title">No expenses yet</p>
+        <p class="profile-empty-copy">
+            Once you start tracking spending, your totals and category breakdown
+            will show up here.
+        </p>
+    </div>
+    {% endif %}
+
+    <p class="profile-chip">Expense tracking is coming soon</p>
+</section>
+
+{% endblock %}
