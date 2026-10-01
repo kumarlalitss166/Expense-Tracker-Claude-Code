@@ -211,11 +211,46 @@ git push -u origin HEAD
   Do not force-push. Suggest `git pull --rebase origin <branch>` and ask
   before rebasing.
 
-If the user asked for a PR as well, open it after the push — not instead of it.
+---
+
+## Step 7 — Raise the PR (only if asked)
+
+Skip this step unless the user explicitly asks for a pull request. A push is
+not a PR — never open one unprompted.
+
+Use this exact format:
+
+```bash
+gh pr create --base main --head feature/login-api --title "Add login API" --body "Implements the login API."
+```
+
+Substitute the three values for the current step:
+
+| Placeholder | Value |
+|---|---|
+| `--base` | always `main` for this project |
+| `--head` | the branch you just pushed (`git branch --show-current`) |
+| `--title` | the commit subject — same themed message, no trailing period |
+| `--body` | 2-4 lines: what landed and how to verify. Point at the spec path |
+
+A filled-in example:
+
+```bash
+gh pr create --base main --head feature/backend-routes-for-profile-page --title "Step 5: profile account management and expense-data routes" --body "Implements Step 5 from .claude/specs/05-backend-routes-for-profile-page.md. Verify with the spec's Definition of done."
+```
+
+Then confirm the PR landed and record the URL:
+
+```bash
+gh pr view <number> --json number,title,baseRefName,headRefName,state,url
+```
+
+If `gh` is unauthenticated or missing, stop and tell the user — do not fall
+back to pushing a branch and pretending a PR exists.
 
 ---
 
-## Step 7 — Report
+## Step 8 — Report
 
 Print exactly:
 
@@ -223,6 +258,7 @@ Print exactly:
 Branch:  <branch>
 Commit:  <short-sha> <subject>
 Pushed:  origin/<branch>
+PR:      <url, or "not requested">
 Docs:    <files updated, or "none needed">
 ```
 
@@ -242,6 +278,9 @@ Do not start the next step unless asked.
 - If the implementation is incomplete, refuse to ship and name the gaps
 - If `git status` shows unexpected files (editor junk, exports), ask before
   staging them
+- Never open a PR unless the user asked for one; when they do, use the
+  `gh pr create --base main --head <branch> --title "..." --body "..."` form
+  in Step 7
 
 ## Troubleshooting
 
@@ -252,3 +291,4 @@ Do not start the next step unless asked.
 | `Please tell me who you are` | `git config user.name` / `user.email` — ask the user for values |
 | Spec checklist half-ticked after reading | Implementation is incomplete — do not ship |
 | `git add` picks up junk | Stage explicit paths only; add ignores to `.gitignore` if recurring |
+| `gh` errors on `pr create` | Check `gh auth status`; a PR already open for that branch → `gh pr view` instead of creating a second one |
