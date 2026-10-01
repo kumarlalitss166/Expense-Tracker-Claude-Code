@@ -42,6 +42,8 @@
             {% endfor %}
         </div>
     </div>
+
+    {% include "partials/history_section.html" %}
     {% else %}
     <div class="profile-empty">
         <p class="profile-empty-title">No expenses yet</p>
@@ -53,6 +55,18 @@
     {% endif %}
 
     <p class="profile-chip">Expense tracking is coming soon</p>
+
+    <section class="profile-account">
+        <h2 class="profile-heading">Account</h2>
+        <div class="profile-account-links">
+            <a href="{{ url_for('edit_profile') }}">Edit name and email</a>
+            <a href="{{ url_for('change_password') }}">Change password</a>
+        </div>
+        <form method="POST" action="{{ url_for('delete_account') }}"
+              onsubmit="return confirm('This permanently deletes your account and all expenses. Continue?');">
+            <button type="submit" class="btn-danger">Delete account</button>
+        </form>
+    </section>
 </section>
 
 {% endblock %}
