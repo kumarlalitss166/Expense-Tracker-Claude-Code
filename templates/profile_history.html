@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions — Spendly{% endblock %}
+
+{% block content %}
+
+<section class="profile-section">
+    <div class="history-card">
+        <h1 class="profile-heading">Transactions</h1>
+
+        {% if transactions %}
+        <ul class="history-list">
+            {% for tx in transactions %}
+            <li class="history-row">
+                <span class="history-date">{{ tx.date }}</span>
+                <span class="history-category">{{ tx.category }}</span>
+                <span class="history-desc">{{ tx.description or "—" }}</span>
+                <span class="history-amount">₹{{ "%.2f"|format(tx.amount) }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="profile-empty-title">No transactions yet</p>
+        <p class="profile-empty-copy">
+            Once you start logging expenses, your transactions will show up
+            here with their date, category, and amount.
+        </p>
+        {% endif %}
+    </div>
+
+    <p class="history-view-all">
+        <a href="{{ url_for('profile') }}">Back to profile</a>
+    </p>
+</section>
+
+{% endblock %}

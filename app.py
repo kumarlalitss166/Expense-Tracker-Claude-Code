@@ -3,7 +3,7 @@ import sqlite3
 from datetime import datetime
 from functools import wraps
 
-from flask import Flask, g, redirect, render_template, request, session, url_for
+from flask import Flask, g, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import get_db, init_db, seed_db
@@ -29,6 +29,23 @@ def login_required(view):
 @app.context_processor
 def inject_auth():
     return {"is_logged_in": "user_id" in session}
+
+
+# ------------------------------------------------------------------ #
+# Validation helpers                                                  #
+# ------------------------------------------------------------------ #
+
+def is_valid_email(email):
+    """True when *email* passes the same format rules enforced by /register."""
+    local, sep, domain = email.partition("@")
+    return not (
+        email.count("@") != 1
+        or not local
+        or "." not in domain
+        or domain.startswith(".")
+        or domain.endswith(".")
+        or ".." in domain
+    )
 
 
 # ------------------------------------------------------------------ #
@@ -77,15 +94,7 @@ def register():
         return render_template("register.html", error="Please enter your name."), 400
     if not email:
         return render_template("register.html", error="Please enter your email address."), 400
-    local, sep, domain = email.partition("@")
-    if (
-        email.count("@") != 1
-        or not local
-        or "." not in domain
-        or domain.startswith(".")
-        or domain.endswith(".")
-        or ".." in domain
-    ):
+    if not is_valid_email(email):
         return render_template("register.html", error="Please enter a valid email address."), 400
     if len(password) < 8:
         return render_template("register.html", error="Password must be at least 8 characters."), 400
@@ -161,31 +170,53 @@ def logout():
     return redirect(url_for("landing"))
 
 
-@app.route("/profile")
-@login_required
-def profile():
+# ------------------------------------------------------------------ #
+# Profile data helpers + JSON endpoints (Step 5, Scope B)             #
+# Each block is filled by one subagent's snippet; orchestrator splices #
+# ------------------------------------------------------------------ #
+
+# ===== BEGIN STEP5 SUMMARY-STATS (subagent-2) =====
+def get_summary_stats(user_id):
+    """Return {"expense_count": <int>, "total_spend": <float>} for one user."""
     conn = get_db()
     try:
-        stats = conn.execute(
+        row = conn.execute(
             """
             SELECT COUNT(*) AS n, COALESCE(SUM(amount), 0) AS total
-            FROM expenses WHERE user_id = ?
+            FROM expenses
+            WHERE user_id = ?
             """,
-            (g.user["id"],),
+            (user_id,),
         ).fetchone()
+    finally:
+        conn.close()
+    return {"expense_count": row["n"], "total_spend": float(row["total"])}
+
+
+@app.route("/api/profile/stats")
+@login_required
+def api_profile_stats():
+    """JSON summary stats for the signed-in user."""
+    return jsonify(get_summary_stats(g.user["id"]))
+# ===== END STEP5 SUMMARY-STATS =====
+
+# ===== BEGIN STEP5 CATEGORY-BREAKDOWN (subagent-3) =====
+def get_category_breakdown(user_id):
+    """Return list[dict] with keys: category, count, total, bar_pct."""
+    conn = get_db()
+    try:
         rows = conn.execute(
             """
             SELECT category, COUNT(*) AS n, COALESCE(SUM(amount), 0) AS total
-            FROM expenses WHERE user_id = ?
-            GROUP BY category ORDER BY total DESC
+            FROM expenses
+            WHERE user_id = ?
+            GROUP BY category
+            ORDER BY total DESC
             """,
-            (g.user["id"],),
+            (user_id,),
         ).fetchall()
     finally:
         conn.close()
-
-    expense_count = stats["n"]
-    total_spend = stats["total"]
 
     max_total = max((row["total"] for row in rows), default=0)
     breakdown = [
@@ -197,6 +228,65 @@ def profile():
         }
         for row in rows
     ]
+    return breakdown
+
+
+@app.route("/api/profile/breakdown")
+@login_required
+def api_profile_breakdown():
+    """JSON: {"breakdown": [...]} for the signed-in user."""
+    return jsonify({"breakdown": get_category_breakdown(g.user["id"])})
+# ===== END STEP5 CATEGORY-BREAKDOWN =====
+
+# ===== BEGIN STEP5 TRANSACTION-HISTORY (subagent-1) =====
+def get_recent_transactions(user_id, limit=5):
+    """Return up to *limit* of the user's expenses, newest first.
+    -> list[dict] with keys: id, amount, category, date, description
+    """
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            """
+            SELECT id, amount, category, date, description
+            FROM expenses
+            WHERE user_id = ?
+            ORDER BY date DESC, id DESC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        ).fetchall()
+    finally:
+        conn.close()
+    return [dict(row) for row in rows]
+
+
+@app.route("/profile/history")
+@login_required
+def profile_history():
+    """Server-rendered full transaction history page."""
+    transactions = get_recent_transactions(g.user["id"], limit=100)
+    return render_template("profile_history.html", transactions=transactions)
+
+
+@app.route("/api/profile/history")
+@login_required
+def api_profile_history():
+    """JSON: {"transactions": [...], "count": <int>}"""
+    limit = request.args.get("limit", 20, type=int)
+    limit = max(1, min(limit or 20, 100))
+    transactions = get_recent_transactions(g.user["id"], limit=limit)
+    return jsonify({"transactions": transactions, "count": len(transactions)})
+# ===== END STEP5 TRANSACTION-HISTORY =====
+
+
+@app.route("/profile")
+@login_required
+def profile():
+    stats = get_summary_stats(g.user["id"])
+    breakdown = get_category_breakdown(g.user["id"])
+    recent_transactions = get_recent_transactions(g.user["id"], limit=5)
+    expense_count = stats["expense_count"]
+    total_spend = stats["total_spend"]
 
     member_since = None
     if g.user["created_at"]:
@@ -213,7 +303,136 @@ def profile():
         expense_count=expense_count,
         total_spend=total_spend,
         breakdown=breakdown,
+        recent_transactions=recent_transactions,
     )
+
+
+# ------------------------------------------------------------------ #
+# Account management (Step 5, Scope A) — orchestrator-owned            #
+# ------------------------------------------------------------------ #
+
+@app.route("/profile/edit", methods=["GET", "POST"])
+@login_required
+def edit_profile():
+    if request.method == "GET":
+        return render_template(
+            "profile_edit.html", name=g.user["name"], email=g.user["email"]
+        )
+
+    name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip().lower()
+
+    if not name:
+        return render_template(
+            "profile_edit.html", name=name, email=email, error="Please enter your name."
+        ), 400
+    if not email:
+        return render_template(
+            "profile_edit.html",
+            name=name,
+            email=email,
+            error="Please enter your email address.",
+        ), 400
+    if not is_valid_email(email):
+        return render_template(
+            "profile_edit.html",
+            name=name,
+            email=email,
+            error="Please enter a valid email address.",
+        ), 400
+
+    conn = get_db()
+    try:
+        taken = conn.execute(
+            "SELECT 1 FROM users WHERE email = ? AND id != ?", (email, g.user["id"])
+        ).fetchone()
+        if taken:
+            return render_template(
+                "profile_edit.html",
+                name=name,
+                email=email,
+                error="An account with that email already exists.",
+            ), 400
+        try:
+            conn.execute(
+                "UPDATE users SET name = ?, email = ? WHERE id = ?",
+                (name, email, g.user["id"]),
+            )
+            conn.commit()
+        except sqlite3.IntegrityError:
+            return render_template(
+                "profile_edit.html",
+                name=name,
+                email=email,
+                error="An account with that email already exists.",
+            ), 400
+    finally:
+        conn.close()
+
+    return redirect(url_for("profile"))
+
+
+@app.route("/profile/password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    if request.method == "GET":
+        return render_template("profile_password.html")
+
+    current = request.form.get("current_password", "")
+    new = request.form.get("new_password", "")
+    confirm = request.form.get("confirm_password", "")
+
+    if not current or not new or not confirm:
+        return render_template(
+            "profile_password.html", error="Please fill in all fields."
+        ), 400
+
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT password_hash FROM users WHERE id = ?", (g.user["id"],)
+        ).fetchone()
+
+        if row is None or not check_password_hash(row["password_hash"], current):
+            return render_template(
+                "profile_password.html", error="Your current password is incorrect."
+            ), 400
+        if len(new) < 8:
+            return render_template(
+                "profile_password.html",
+                error="Password must be at least 8 characters.",
+            ), 400
+        if new != confirm:
+            return render_template(
+                "profile_password.html", error="New passwords do not match."
+            ), 400
+
+        conn.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (generate_password_hash(new), g.user["id"]),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return redirect(url_for("profile"))
+
+
+@app.route("/profile/delete", methods=["POST"])
+@login_required
+def delete_account():
+    conn = get_db()
+    try:
+        # expenses first — the FK has no ON DELETE CASCADE and get_db() sets
+        # PRAGMA foreign_keys = ON, so deleting the user first would raise.
+        conn.execute("DELETE FROM expenses WHERE user_id = ?", (g.user["id"],))
+        conn.execute("DELETE FROM users WHERE id = ?", (g.user["id"],))
+        conn.commit()
+    finally:
+        conn.close()
+
+    session.clear()
+    return redirect(url_for("landing"))
 
 
 @app.route("/expenses/add")
