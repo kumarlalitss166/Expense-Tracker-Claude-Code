@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Current state: landing, registration, login/logout, the profile dashboard, and profile account management (edit name/email, change password, delete account) are live. Profile expense data is served by reusable helpers and JSON endpoints (history, summary stats, category breakdown) and merged into the profile page. Category + date-range filters (Step 6) narrow that snapshot via GET query params on the profile routes and APIs. Expense CRUD remains stubs for later steps.
 
+The signed-in area (`/profile`, `/profile/history`, `/profile/edit`, `/profile/password`) renders through `templates/dashboard.html` — app header + left sidebar + compact footer. Public pages (landing, auth, terms) still use the marketing navbar/footer in `base.html`. The profile page is a financial dashboard: hero card, filter card, four metric tiles (total, count, average, top category), a CSS `conic-gradient` donut with category bars, recent-transactions table, and account-settings tiles.
+
 ## Commands
 
 Windows uses the `py` launcher in this environment.
@@ -45,11 +47,11 @@ Single-process Flask app — no blueprints, no ORM, no frontend framework.
 |------|------|
 | `app.py` | Flask app factory-by-convention: creates `app`, defines all routes, `app.run(debug=True, host=”0.0.0.0”, port=5000)` |
 | `database/db.py` | SQLite data layer — `get_db()`, `init_db()`, `seed_db()` with stdlib `sqlite3`; DB file `expense_tracker.db` |
-| `templates/` | Jinja2 pages extending `base.html` (`{% block content %}`, optional `head` / `scripts`). `templates/partials/` holds includes that do **not** extend `base.html` |
+| `templates/` | Jinja2 pages extending `base.html` (`{% block content %}`, optional `head` / `scripts`). Signed-in pages extend `dashboard.html` instead. `templates/partials/` holds includes that do **not** extend `base.html` |
 | `static/css/style.css` | Global design tokens (`:root` CSS variables) and page styles |
 | `static/js/main.js` | Vanilla JS only (no npm/bundler) — currently the landing “See how it works” YouTube modal |
 | `conftest.py` | Pytest bootstrap — repoints `database.db.DB_PATH` at a temp file **before** `app` is imported (DB isolation) |
-| `tests/` | Pytest suites, one file per feature step (`test_<step>-<slug>.py`) |
+| `tests/` | Pytest suites, one file per feature step (`test_<step>-<slug>.py`); `test_profile-dashboard-redesign.py` covers the dashboard UI metrics and safety contracts |
 | `docs/` | Session notes, prompts, and UI mockups — not runtime code |
 | `requirements.txt` | Pinned: Flask 3.1.3, Werkzeug 3.1.6, pytest 8.3.5, pytest-flask 1.3.0 |
 
@@ -83,7 +85,8 @@ Optional `category`, `date_from`, `date_to` query params on `/profile`, `/profil
 - Brand: **Spendly**; fonts DM Serif Display + DM Sans (Google Fonts in `base.html`).
 - Design references live under `docs/UI Design Templates/`.
 - Prefer vanilla JS in `static/js/`; do not introduce a JS framework unless explicitly asked.
-- Footer Privacy Policy link in `base.html` is still `#` (Terms is wired to `url_for('terms')`).
+- Footer Privacy Policy link is still `#` in both `base.html` and `templates/partials/app_footer.html` (Terms is wired to `url_for('terms')`).
+- Core colours live in `:root` tokens; dashboard accent tints (metric icons, category badges, donut ramp in `DONUT_COLORS`) use literal hex.
 
 ### Learning-step placeholders in `app.py`
 

@@ -34,6 +34,80 @@ def inject_auth():
 
 
 # ------------------------------------------------------------------ #
+# Presentation helpers — formatting only, no business logic            #
+# ------------------------------------------------------------------ #
+
+# Sequential sage→deep-green ramp for the category donut (index-based,
+# never derived from user input, so the style attribute stays safe).
+DONUT_COLORS = (
+    "#1a472a",
+    "#2f6b45",
+    "#4a8f63",
+    "#6fae88",
+    "#9bc7aa",
+    "#c0dcc8",
+    "#dcece2",
+)
+
+CATEGORY_BADGE_CLASS = {
+    "Food": "cat-badge-food",
+    "Transport": "cat-badge-transport",
+    "Bills": "cat-badge-bills",
+    "Health": "cat-badge-health",
+    "Entertainment": "cat-badge-entertainment",
+    "Shopping": "cat-badge-shopping",
+    "Other": "cat-badge-other",
+}
+
+
+@app.template_filter("inr")
+def format_inr(value):
+    """Indian-rupee money string, e.g. 11602.7 -> '₹11,602.70'."""
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        amount = 0.0
+    return f"₹{amount:,.2f}"
+
+
+@app.template_filter("cat_badge")
+def category_badge_class(category):
+    """CSS class for a category chip; unknown names fall back safely."""
+    return CATEGORY_BADGE_CLASS.get(category, "cat-badge-other")
+
+
+def build_donut(breakdown):
+    """Donut geometry for the category chart.
+
+    -> None when there is nothing to draw, else
+       {"gradient": str, "rows": list[dict], "total": float}
+    where each row is a breakdown row plus a "color" key.
+    The gradient string is built only from our colour constants and
+    numbers, so it is safe to drop into a style attribute.
+    """
+    total = sum(row["total"] for row in breakdown)
+    if total <= 0:
+        return None
+
+    stops = []
+    rows = []
+    acc = 0.0
+    for index, row in enumerate(breakdown):
+        color = DONUT_COLORS[index % len(DONUT_COLORS)]
+        pct = row["total"] / total * 100.0
+        start = acc
+        acc += pct
+        stops.append(f"{color} {start:.2f}% {acc:.2f}%")
+        rows.append({**row, "color": color})
+
+    return {
+        "gradient": "conic-gradient(" + ", ".join(stops) + ")",
+        "rows": rows,
+        "total": total,
+    }
+
+
+# ------------------------------------------------------------------ #
 # Validation helpers                                                  #
 # ------------------------------------------------------------------ #
 
@@ -269,7 +343,13 @@ def get_summary_stats(user_id, category=None, date_from=None, date_to=None):
         ).fetchone()
     finally:
         conn.close()
-    return {"expense_count": row["n"], "total_spend": float(row["total"])}
+    count = row["n"]
+    total = float(row["total"])
+    return {
+        "expense_count": count,
+        "total_spend": total,
+        "average_spend": (total / count) if count else 0.0,
+    }
 
 
 @app.route("/api/profile/stats")
@@ -299,12 +379,16 @@ def get_category_breakdown(user_id, category=None, date_from=None, date_to=None)
         conn.close()
 
     max_total = max((row["total"] for row in rows), default=0)
+    grand_total = sum(row["total"] for row in rows)
     breakdown = [
         {
             "category": row["category"],
             "count": row["n"],
             "total": row["total"],
             "bar_pct": round(row["total"] / max_total * 100, 1) if max_total else 0,
+            "share_pct": (
+                round(row["total"] / grand_total * 100, 1) if grand_total else 0
+            ),
         }
         for row in rows
     ]
@@ -387,6 +471,7 @@ def profile():
     recent_transactions = get_recent_transactions(g.user["id"], limit=5, **filters)
     expense_count = stats["expense_count"]
     total_spend = stats["total_spend"]
+    average_spend = stats["average_spend"]
 
     # Unfiltered count drives the "has any expenses ever" gate so a filtered
     # empty result never falls through to the no-expenses-yet empty state.
@@ -394,6 +479,9 @@ def profile():
         total_expense_count = get_summary_stats(g.user["id"])["expense_count"]
     else:
         total_expense_count = expense_count
+
+    top_category = breakdown[0] if breakdown else None
+    donut = build_donut(breakdown)
 
     member_since = None
     if g.user["created_at"]:
@@ -410,6 +498,9 @@ def profile():
         expense_count=expense_count,
         total_expense_count=total_expense_count,
         total_spend=total_spend,
+        average_spend=average_spend,
+        top_category=top_category,
+        donut=donut,
         breakdown=breakdown,
         recent_transactions=recent_transactions,
         **_filter_template_context(filters, error, url_for("profile")),

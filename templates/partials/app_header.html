@@ -1,0 +1,18 @@
+<header class="app-header">
+    <div class="app-header-inner">
+        <a href="{{ url_for('landing') }}" class="nav-brand app-brand">
+            <span class="brand-icon" aria-hidden="true">◈</span>
+            <span class="brand-name">Spendly</span>
+        </a>
+
+        <div class="app-header-user">
+            <a href="{{ url_for('profile') }}" class="app-user-chip">
+                <span class="app-avatar app-avatar-sm" aria-hidden="true">
+                    {{- g.user.name[:1]|upper if g.user and g.user.name else "S" -}}
+                </span>
+                <span class="app-user-name">{{ g.user.name if g.user else "Account" }}</span>
+            </a>
+            <a href="{{ url_for('logout') }}" class="app-signout">Sign out</a>
+        </div>
+    </div>
+</header>

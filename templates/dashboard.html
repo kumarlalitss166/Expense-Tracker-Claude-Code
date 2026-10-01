@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{# Authenticated app shell: top bar + sidebar + compact footer. #}
+
+{% block body_class %}app-body{% endblock %}
+
+{% block app_frame %}
+{% include "partials/app_header.html" %}
+
+<div class="app-layout">
+    {% include "partials/app_sidebar.html" %}
+    <main class="app-main" id="main-content">
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+{% include "partials/app_footer.html" %}
+{% endblock %}

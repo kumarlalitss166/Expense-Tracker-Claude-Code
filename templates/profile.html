@@ -1,81 +1,367 @@
-{% extends "base.html" %}
+{% extends "dashboard.html" %}
 
 {% block title %}Profile · Spendly{% endblock %}
 
+{% set no_match = filters_active and expense_count == 0 %}
+{% set no_expenses = total_expense_count == 0 %}
+
 {% block content %}
+<div class="dash">
 
-<section class="profile-section">
-    <header class="profile-header">
-        <h1 class="profile-title">Your profile</h1>
-        <div class="profile-meta">
-            <p class="profile-name">{{ g.user.name }}</p>
-            <p class="profile-email">{{ g.user.email }}</p>
-            {% if member_since %}
-            <p class="profile-since">Member since {{ member_since }}</p>
-            {% endif %}
+    {# ---- Profile hero ---- #}
+    <section class="dash-hero" aria-labelledby="profile-name">
+        <div class="dash-hero-main">
+            <div class="dash-hero-top">
+                <div class="app-avatar app-avatar-lg" aria-hidden="true">
+                    {{- g.user.name[:1]|upper if g.user and g.user.name else "S" -}}
+                </div>
+                <div class="dash-hero-id">
+                    <p class="dash-eyebrow">Your profile</p>
+                    <h1 class="dash-hero-name" id="profile-name">{{ g.user.name }}</h1>
+                    <p class="dash-hero-email">{{ g.user.email }}</p>
+                    {% if member_since %}
+                    <p class="dash-hero-since">
+                        <svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/>
+                        </svg>
+                        Member since {{ member_since }}
+                    </p>
+                    {% endif %}
+                </div>
+                <a href="{{ url_for('edit_profile') }}" class="btn-secondary dash-hero-edit">
+                    <svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>
+                    </svg>
+                    Edit profile
+                </a>
+            </div>
+            <p class="dash-hero-tagline">Track every rupee with clarity.</p>
         </div>
-    </header>
 
-    {% include "partials/filter_bar.html" %}
+        <div class="dash-hero-art" aria-hidden="true">
+            <svg class="hero-plant" viewBox="0 0 220 140" fill="none">
+                <rect x="120" y="28" width="88" height="72" rx="8" fill="#cfe3d4"/>
+                <rect x="132" y="78" width="12" height="12" rx="2" fill="#1a472a"/>
+                <rect x="150" y="62" width="12" height="28" rx="2" fill="#2f6b45"/>
+                <rect x="168" y="48" width="12" height="42" rx="2" fill="#4a8f63"/>
+                <rect x="186" y="38" width="12" height="52" rx="2" fill="#6fae88"/>
+                <path d="M70 118c0-28 10-48 28-58" stroke="#2f6b45" stroke-width="3" stroke-linecap="round"/>
+                <path d="M86 78c-14-2-24-12-26-26 14 2 24 12 26 26z" fill="#6fae88"/>
+                <path d="M92 92c12-6 18-18 16-32-12 6-18 18-16 32z" fill="#4a8f63"/>
+                <path d="M78 98c-12 2-22-4-28-16 12-2 22 4 28 16z" fill="#9bc7aa"/>
+                <rect x="58" y="116" width="36" height="8" rx="4" fill="#1a472a"/>
+            </svg>
+        </div>
+    </section>
 
-    {% if total_expense_count == 0 %}
-    <div class="profile-empty">
-        <p class="profile-empty-title">No expenses yet</p>
-        <p class="profile-empty-copy">
+    {# ---- Filters ---- #}
+    <section class="dash-card dash-filters" aria-labelledby="filter-heading">
+        <header class="dash-card-head">
+            <span class="dash-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 6h16"/><path d="M7 12h10"/><path d="M10 18h4"/>
+                </svg>
+            </span>
+            <div>
+                <h2 class="dash-card-title" id="filter-heading">Filter your transactions</h2>
+                <p class="dash-card-sub">View your spending by category and time period.</p>
+            </div>
+        </header>
+
+        {% include "partials/filter_bar.html" %}
+    </section>
+
+    {# ---- Empty / no-match notices ---- #}
+    {% if no_expenses %}
+    <section class="dash-card dash-empty" role="status">
+        <p class="dash-empty-title">No expenses yet</p>
+        <p class="dash-empty-copy">
             Once you start tracking spending, your totals and category breakdown
             will show up here.
         </p>
-    </div>
-    {% elif filters_active and expense_count == 0 %}
-    <div class="filter-no-match">
-        <p class="filter-no-match-title">No expenses match these filters</p>
-        <p class="filter-no-match-copy">
+    </section>
+    {% elif no_match %}
+    <section class="dash-card dash-empty dash-empty-filtered" role="status">
+        <p class="dash-empty-title">No expenses match these filters</p>
+        <p class="dash-empty-copy">
             Try a wider date range or <a href="{{ filter_action }}">clear filters</a>.
         </p>
-    </div>
-    {% else %}
-    <div class="profile-stats">
-        <div class="profile-stat-card">
-            <span class="profile-stat-label">Total spent</span>
-            <span class="profile-stat-value">₹{{ "%.2f"|format(total_spend) }}</span>
-        </div>
-        <div class="profile-stat-card">
-            <span class="profile-stat-label">Expenses</span>
-            <span class="profile-stat-value">{{ expense_count }}</span>
-        </div>
-    </div>
-
-    <div class="profile-breakdown">
-        <h2 class="profile-heading">By category</h2>
-        <div class="profile-bars">
-            {% for row in breakdown %}
-            <div class="profile-bar-row">
-                <span class="profile-cat">{{ row.category }}</span>
-                <div class="profile-bar-track">
-                    <div class="profile-bar" style="width: {{ row.bar_pct }}%"></div>
-                </div>
-                <span class="profile-cat-amt">₹{{ "%.2f"|format(row.total) }}</span>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-
-    {% include "partials/history_section.html" %}
+    </section>
     {% endif %}
 
-    <p class="profile-chip">Expense tracking is coming soon</p>
+    {# ---- Summary metrics ---- #}
+    <section class="dash-metrics" aria-label="Spending summary">
+        <article class="metric-card">
+            <span class="metric-icon metric-icon-green" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 12h2"/>
+                </svg>
+            </span>
+            <div class="metric-body">
+                <p class="metric-label">Total spent</p>
+                <p class="metric-value">
+                    {%- if no_match %}—{% else %}{{ total_spend|inr }}{% endif -%}
+                </p>
+            </div>
+        </article>
 
-    <section class="profile-account">
-        <h2 class="profile-heading">Account</h2>
-        <div class="profile-account-links">
-            <a href="{{ url_for('edit_profile') }}">Edit name and email</a>
-            <a href="{{ url_for('change_password') }}">Change password</a>
-        </div>
-        <form method="POST" action="{{ url_for('delete_account') }}"
-              onsubmit="return confirm('This permanently deletes your account and all expenses. Continue?');">
-            <button type="submit" class="btn-danger">Delete account</button>
-        </form>
+        <article class="metric-card">
+            <span class="metric-icon metric-icon-blue" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 13h6M10 17h4"/>
+                </svg>
+            </span>
+            <div class="metric-body">
+                <p class="metric-label">Expenses</p>
+                <p class="metric-value">{{ expense_count }}</p>
+                <p class="metric-note">Total transactions</p>
+            </div>
+        </article>
+
+        <article class="metric-card">
+            <span class="metric-icon metric-icon-violet" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>
+                </svg>
+            </span>
+            <div class="metric-body">
+                <p class="metric-label">Average spend</p>
+                <p class="metric-value">
+                    {%- if no_match %}—{% else %}{{ average_spend|inr }}{% endif -%}
+                </p>
+                <p class="metric-note">per transaction</p>
+            </div>
+        </article>
+
+        <article class="metric-card">
+            <span class="metric-icon metric-icon-amber" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/>
+                    <path d="M7 6H5a2 2 0 0 0 2 4"/><path d="M17 6h2a2 2 0 0 1-2 4"/>
+                </svg>
+            </span>
+            <div class="metric-body">
+                <p class="metric-label">Top category</p>
+                {% if no_match or not top_category %}
+                <p class="metric-value metric-value-text">—</p>
+                {% else %}
+                <p class="metric-value metric-value-text">{{ top_category.category }}</p>
+                <p class="metric-note">
+                    {{ top_category.total|inr }} ({{ top_category.share_pct }}%)
+                </p>
+                {% endif %}
+            </div>
+        </article>
     </section>
-</section>
 
+    {# ---- Spending by category + insights ---- #}
+    <div class="dash-split">
+        <section class="dash-card dash-category" aria-labelledby="category-heading">
+            <header class="dash-card-head">
+                <span class="dash-card-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="9"/><path d="M12 3v9l6.5 6.5"/>
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="dash-card-title" id="category-heading">Spending by category</h2>
+                    <p class="dash-card-sub">See how your money is spent across categories.</p>
+                </div>
+            </header>
+
+            {% if no_match %}
+            <p class="dash-inline-empty">No expenses match these filters.</p>
+            {% elif not breakdown %}
+            <p class="dash-inline-empty">No spending data for this period.</p>
+            {% else %}
+            <div class="category-viz">
+                <div class="donut-wrap">
+                    <div class="donut"
+                         style="background: {{ donut.gradient }};"
+                         role="img"
+                         aria-label="Spending by category chart">
+                    </div>
+                    <div class="donut-hole">
+                        <span class="donut-total">
+                            {%- if no_match %}—{% else %}{{ total_spend|inr }}{% endif -%}
+                        </span>
+                        <span class="donut-caption">Total spent</span>
+                    </div>
+                </div>
+
+                <ul class="category-list">
+                    {% for row in donut.rows %}
+                    <li class="category-row">
+                        <div class="category-row-top">
+                            <span class="category-dot" style="background: {{ row.color }};" aria-hidden="true"></span>
+                            <span class="category-name">{{ row.category }}</span>
+                            <span class="category-amount">{{ row.total|inr }}</span>
+                            <span class="category-share">{{ row.share_pct }}%</span>
+                        </div>
+                        <div class="category-track" aria-hidden="true">
+                            <div class="category-fill" style="width: {{ row.bar_pct }}%; background: {{ row.color }};"></div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </section>
+
+        <aside class="dash-card dash-insights" aria-labelledby="insights-heading">
+            <span class="dash-card-icon dash-card-icon-soft" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>
+                </svg>
+            </span>
+            <h2 class="dash-insights-title" id="insights-heading">Expense insights are coming soon</h2>
+            <p class="dash-insights-copy">
+                Get deeper insights, monthly reports and smarter spending summaries.
+            </p>
+            <p class="dash-chip">Coming soon</p>
+        </aside>
+    </div>
+
+    {# ---- Recent transactions ---- #}
+    <section class="dash-card dash-tx" aria-labelledby="tx-heading">
+        <header class="dash-card-head dash-card-head-row">
+            <div class="dash-card-head">
+                <span class="dash-card-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 13h6M10 17h4"/>
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="dash-card-title" id="tx-heading">Recent transactions</h2>
+                    <p class="dash-card-sub">Your latest spending activity across all categories.</p>
+                </div>
+            </div>
+            <a class="dash-view-all" href="{{ url_for('profile_history') }}{% if filter_qs %}?{{ filter_qs }}{% endif %}">
+                View all
+                <svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>
+                </svg>
+            </a>
+        </header>
+
+        {% if recent_transactions %}
+        <div class="tx-table-wrap">
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Description</th>
+                        <th scope="col" class="tx-amount-head">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in recent_transactions %}
+                    <tr>
+                        <td class="tx-date">{{ tx.date }}</td>
+                        <td>
+                            <span class="cat-badge {{ tx.category|cat_badge }}">{{ tx.category }}</span>
+                        </td>
+                        <td class="tx-desc">{{ tx.description or "—" }}</td>
+                        <td class="tx-amount">{{ tx.amount|inr }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% elif no_match %}
+        <p class="dash-inline-empty">No expenses match these filters.</p>
+        {% elif no_expenses %}
+        <p class="dash-inline-empty">No transactions yet.</p>
+        {% else %}
+        <p class="dash-inline-empty">No transactions match these filters.</p>
+        {% endif %}
+    </section>
+
+    {# ---- Account settings ---- #}
+    <section class="dash-card dash-account" id="account-settings" aria-labelledby="account-heading">
+        <header class="dash-card-head">
+            <span class="dash-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h.1a1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+                </svg>
+            </span>
+            <div>
+                <h2 class="dash-card-title" id="account-heading">Account settings</h2>
+                <p class="dash-card-sub">Manage your account and security settings.</p>
+            </div>
+        </header>
+
+        <div class="account-tiles">
+            <a href="{{ url_for('edit_profile') }}" class="account-tile">
+                <span class="account-tile-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/>
+                    </svg>
+                </span>
+                <span class="account-tile-body">
+                    <span class="account-tile-title">Edit name and email</span>
+                    <span class="account-tile-sub">Update your personal information.</span>
+                </span>
+                <svg class="account-tile-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9 6l6 6-6 6"/>
+                </svg>
+            </a>
+
+            <a href="{{ url_for('change_password') }}" class="account-tile">
+                <span class="account-tile-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+                    </svg>
+                </span>
+                <span class="account-tile-body">
+                    <span class="account-tile-title">Change password</span>
+                    <span class="account-tile-sub">Keep your account secure.</span>
+                </span>
+                <svg class="account-tile-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9 6l6 6-6 6"/>
+                </svg>
+            </a>
+
+            <form method="POST" action="{{ url_for('delete_account') }}" class="account-danger-form"
+                  onsubmit="return confirm('This permanently deletes your account and all expenses. This cannot be undone. Continue?');">
+                <button type="submit" class="account-tile account-tile-danger">
+                    <span class="account-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6 7l1 13h10l1-13"/>
+                            <path d="M10 11v6M14 11v6"/>
+                        </svg>
+                    </span>
+                    <span class="account-tile-body">
+                        <span class="account-tile-title">Delete account</span>
+                        <span class="account-tile-sub">Permanently delete your account.</span>
+                    </span>
+                    <svg class="account-tile-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M9 6l6 6-6 6"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </section>
+
+</div>
 {% endblock %}

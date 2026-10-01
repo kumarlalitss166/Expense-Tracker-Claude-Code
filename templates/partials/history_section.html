@@ -6,9 +6,11 @@
         {% for tx in recent_transactions %}
         <li class="history-row">
             <span class="history-date">{{ tx.date }}</span>
-            <span class="history-category">{{ tx.category }}</span>
+            <span class="history-category">
+                <span class="cat-badge {{ tx.category|cat_badge }}">{{ tx.category }}</span>
+            </span>
             <span class="history-desc">{{ tx.description or "—" }}</span>
-            <span class="history-amount">₹{{ "%.2f"|format(tx.amount) }}</span>
+            <span class="history-amount">{{ tx.amount|inr }}</span>
         </li>
         {% endfor %}
     </ul>

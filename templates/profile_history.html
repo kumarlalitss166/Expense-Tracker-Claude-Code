@@ -1,45 +1,85 @@
-{% extends "base.html" %}
+{% extends "dashboard.html" %}
 
 {% block title %}Transactions — Spendly{% endblock %}
 
 {% block content %}
+<div class="dash">
+    <section class="dash-card dash-filters" aria-labelledby="filter-heading">
+        <header class="dash-card-head">
+            <span class="dash-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 6h16"/><path d="M7 12h10"/><path d="M10 18h4"/>
+                </svg>
+            </span>
+            <div>
+                <h2 class="dash-card-title" id="filter-heading">Filter your transactions</h2>
+                <p class="dash-card-sub">View your spending by category and time period.</p>
+            </div>
+        </header>
 
-<section class="profile-section">
-    {% include "partials/filter_bar.html" %}
+        {% include "partials/filter_bar.html" %}
+    </section>
 
-    <div class="history-card">
-        <h1 class="profile-heading">Transactions</h1>
+    <section class="dash-card dash-tx" aria-labelledby="tx-heading">
+        <header class="dash-card-head">
+            <span class="dash-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 13h6M10 17h4"/>
+                </svg>
+            </span>
+            <div>
+                <h1 class="dash-card-title" id="tx-heading">Transactions</h1>
+                <p class="dash-card-sub">Your full spending history.</p>
+            </div>
+        </header>
 
         {% if transactions %}
-        <ul class="history-list">
-            {% for tx in transactions %}
-            <li class="history-row">
-                <span class="history-date">{{ tx.date }}</span>
-                <span class="history-category">{{ tx.category }}</span>
-                <span class="history-desc">{{ tx.description or "—" }}</span>
-                <span class="history-amount">₹{{ "%.2f"|format(tx.amount) }}</span>
-            </li>
-            {% endfor %}
-        </ul>
+        <div class="tx-table-wrap">
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Description</th>
+                        <th scope="col" class="tx-amount-head">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in transactions %}
+                    <tr>
+                        <td class="tx-date">{{ tx.date }}</td>
+                        <td>
+                            <span class="cat-badge {{ tx.category|cat_badge }}">{{ tx.category }}</span>
+                        </td>
+                        <td class="tx-desc">{{ tx.description or "—" }}</td>
+                        <td class="tx-amount">{{ tx.amount|inr }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% elif filters_active %}
-        <div class="filter-no-match">
-            <p class="filter-no-match-title">No expenses match these filters</p>
-            <p class="filter-no-match-copy">
+        <div class="dash-empty dash-empty-filtered" role="status">
+            <p class="dash-empty-title">No expenses match these filters</p>
+            <p class="dash-empty-copy">
                 Try a wider date range or <a href="{{ filter_action }}">clear filters</a>.
             </p>
         </div>
         {% else %}
-        <p class="profile-empty-title">No transactions yet</p>
-        <p class="profile-empty-copy">
-            Once you start logging expenses, your transactions will show up
-            here with their date, category, and amount.
-        </p>
+        <div class="dash-empty" role="status">
+            <p class="dash-empty-title">No transactions yet</p>
+            <p class="dash-empty-copy">
+                Once you start logging expenses, your transactions will show up
+                here with their date, category, and amount.
+            </p>
+        </div>
         {% endif %}
-    </div>
+    </section>
 
-    <p class="history-view-all">
+    <p class="dash-back-link">
         <a href="{{ url_for('profile') }}{% if filter_qs %}?{{ filter_qs }}{% endif %}">Back to profile</a>
     </p>
-</section>
-
+</div>
 {% endblock %}
