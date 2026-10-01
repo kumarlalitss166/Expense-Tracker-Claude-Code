@@ -5,6 +5,8 @@
 {% block content %}
 
 <section class="profile-section">
+    {% include "partials/filter_bar.html" %}
+
     <div class="history-card">
         <h1 class="profile-heading">Transactions</h1>
 
@@ -19,6 +21,13 @@
             </li>
             {% endfor %}
         </ul>
+        {% elif filters_active %}
+        <div class="filter-no-match">
+            <p class="filter-no-match-title">No expenses match these filters</p>
+            <p class="filter-no-match-copy">
+                Try a wider date range or <a href="{{ filter_action }}">clear filters</a>.
+            </p>
+        </div>
         {% else %}
         <p class="profile-empty-title">No transactions yet</p>
         <p class="profile-empty-copy">
@@ -29,7 +38,7 @@
     </div>
 
     <p class="history-view-all">
-        <a href="{{ url_for('profile') }}">Back to profile</a>
+        <a href="{{ url_for('profile') }}{% if filter_qs %}?{{ filter_qs }}{% endif %}">Back to profile</a>
     </p>
 </section>
 

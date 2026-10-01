@@ -1,12 +1,14 @@
 import os
+import re
 import sqlite3
 from datetime import datetime
 from functools import wraps
+from urllib.parse import urlencode
 
 from flask import Flask, g, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from database.db import get_db, init_db, seed_db
+from database.db import CATEGORIES, get_db, init_db, seed_db
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
@@ -46,6 +48,82 @@ def is_valid_email(email):
         or domain.endswith(".")
         or ".." in domain
     )
+
+
+ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _parse_iso_date(value):
+    """Return *value* as an ISO date string, or None when absent/invalid."""
+    if not value:
+        return None
+    if not ISO_DATE.match(value):
+        return None
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except ValueError:
+        return None
+    return value
+
+
+def parse_expense_filters(args):
+    """Normalize filter query params once.
+
+    -> (filters, error) where
+       filters = {"category": str|None, "date_from": str|None, "date_to": str|None}
+                 keys match the helper kwargs so routes can do **filters;
+                 all values None when error is set (reversed range).
+       error   = str|None (friendly message for the {{ error }} pattern).
+    """
+    category = (args.get("category") or "").strip()
+    if category and category not in CATEGORIES:
+        category = None
+    date_from = _parse_iso_date((args.get("date_from") or "").strip())
+    date_to = _parse_iso_date((args.get("date_to") or "").strip())
+
+    error = None
+    if date_from and date_to and date_from > date_to:
+        error = "Start date must be on or before end date."
+        category = date_from = date_to = None
+
+    return (
+        {"category": category or None, "date_from": date_from, "date_to": date_to},
+        error,
+    )
+
+
+def _expense_filters_sql(category=None, date_from=None, date_to=None):
+    """Return (sql_fragment, params) to append after `WHERE user_id = ?`."""
+    clauses, params = [], []
+    if category:
+        clauses.append("AND category = ?")
+        params.append(category)
+    if date_from:
+        clauses.append("AND date >= ?")
+        params.append(date_from)
+    if date_to:
+        clauses.append("AND date <= ?")
+        params.append(date_to)
+    return " ".join(clauses), params
+
+
+def describe_filters(filters):
+    """Human summary of active filters, e.g. 'Food, from 2026-09-01 to 2026-09-30'."""
+    parts = []
+    if filters.get("category"):
+        parts.append(filters["category"])
+    if filters.get("date_from") and filters.get("date_to"):
+        parts.append(f"from {filters['date_from']} to {filters['date_to']}")
+    elif filters.get("date_from"):
+        parts.append(f"from {filters['date_from']}")
+    elif filters.get("date_to"):
+        parts.append(f"up to {filters['date_to']}")
+    return ", ".join(parts)
+
+
+def filter_query_string(filters):
+    """Query string (no leading ?) for active filters, '' when none."""
+    return urlencode({k: v for k, v in filters.items() if v})
 
 
 # ------------------------------------------------------------------ #
@@ -176,17 +254,18 @@ def logout():
 # ------------------------------------------------------------------ #
 
 # ===== BEGIN STEP5 SUMMARY-STATS (subagent-2) =====
-def get_summary_stats(user_id):
-    """Return {"expense_count": <int>, "total_spend": <float>} for one user."""
+def get_summary_stats(user_id, category=None, date_from=None, date_to=None):
+    """Return {"expense_count": <int>, "total_spend": <float>} for one user.
+
+    Optional category / date_from / date_to narrow the result (inclusive ISO dates).
+    """
+    frag, params = _expense_filters_sql(category, date_from, date_to)
     conn = get_db()
     try:
         row = conn.execute(
-            """
-            SELECT COUNT(*) AS n, COALESCE(SUM(amount), 0) AS total
-            FROM expenses
-            WHERE user_id = ?
-            """,
-            (user_id,),
+            "SELECT COUNT(*) AS n, COALESCE(SUM(amount), 0) AS total "
+            "FROM expenses WHERE user_id = ? " + frag,
+            (user_id, *params),
         ).fetchone()
     finally:
         conn.close()
@@ -197,23 +276,24 @@ def get_summary_stats(user_id):
 @login_required
 def api_profile_stats():
     """JSON summary stats for the signed-in user."""
-    return jsonify(get_summary_stats(g.user["id"]))
+    filters, _ = parse_expense_filters(request.args)
+    return jsonify(get_summary_stats(g.user["id"], **filters))
 # ===== END STEP5 SUMMARY-STATS =====
 
 # ===== BEGIN STEP5 CATEGORY-BREAKDOWN (subagent-3) =====
-def get_category_breakdown(user_id):
-    """Return list[dict] with keys: category, count, total, bar_pct."""
+def get_category_breakdown(user_id, category=None, date_from=None, date_to=None):
+    """Return list[dict] with keys: category, count, total, bar_pct.
+
+    bar_pct is relative to the largest category in the (filtered) result.
+    """
+    frag, params = _expense_filters_sql(category, date_from, date_to)
     conn = get_db()
     try:
         rows = conn.execute(
-            """
-            SELECT category, COUNT(*) AS n, COALESCE(SUM(amount), 0) AS total
-            FROM expenses
-            WHERE user_id = ?
-            GROUP BY category
-            ORDER BY total DESC
-            """,
-            (user_id,),
+            "SELECT category, COUNT(*) AS n, COALESCE(SUM(amount), 0) AS total "
+            "FROM expenses WHERE user_id = ? " + frag + " "
+            "GROUP BY category ORDER BY total DESC",
+            (user_id, *params),
         ).fetchall()
     finally:
         conn.close()
@@ -235,46 +315,65 @@ def get_category_breakdown(user_id):
 @login_required
 def api_profile_breakdown():
     """JSON: {"breakdown": [...]} for the signed-in user."""
-    return jsonify({"breakdown": get_category_breakdown(g.user["id"])})
+    filters, _ = parse_expense_filters(request.args)
+    return jsonify({"breakdown": get_category_breakdown(g.user["id"], **filters)})
 # ===== END STEP5 CATEGORY-BREAKDOWN =====
 
 # ===== BEGIN STEP5 TRANSACTION-HISTORY (subagent-1) =====
-def get_recent_transactions(user_id, limit=5):
+def get_recent_transactions(
+    user_id, limit=5, category=None, date_from=None, date_to=None
+):
     """Return up to *limit* of the user's expenses, newest first.
     -> list[dict] with keys: id, amount, category, date, description
     """
+    frag, params = _expense_filters_sql(category, date_from, date_to)
     conn = get_db()
     try:
         rows = conn.execute(
-            """
-            SELECT id, amount, category, date, description
-            FROM expenses
-            WHERE user_id = ?
-            ORDER BY date DESC, id DESC
-            LIMIT ?
-            """,
-            (user_id, limit),
+            "SELECT id, amount, category, date, description "
+            "FROM expenses WHERE user_id = ? " + frag + " "
+            "ORDER BY date DESC, id DESC LIMIT ?",
+            (user_id, *params, limit),
         ).fetchall()
     finally:
         conn.close()
     return [dict(row) for row in rows]
 
 
+def _filter_template_context(filters, error, filter_action):
+    """Shared context for pages that render the filter bar."""
+    return {
+        "categories": CATEGORIES,
+        "filters": filters,
+        "filters_active": any(filters.values()),
+        "filter_summary": describe_filters(filters),
+        "filter_qs": filter_query_string(filters),
+        "error": error,
+        "filter_action": filter_action,
+    }
+
+
 @app.route("/profile/history")
 @login_required
 def profile_history():
     """Server-rendered full transaction history page."""
-    transactions = get_recent_transactions(g.user["id"], limit=100)
-    return render_template("profile_history.html", transactions=transactions)
+    filters, error = parse_expense_filters(request.args)
+    transactions = get_recent_transactions(g.user["id"], limit=100, **filters)
+    return render_template(
+        "profile_history.html",
+        transactions=transactions,
+        **_filter_template_context(filters, error, url_for("profile_history")),
+    )
 
 
 @app.route("/api/profile/history")
 @login_required
 def api_profile_history():
     """JSON: {"transactions": [...], "count": <int>}"""
+    filters, _ = parse_expense_filters(request.args)
     limit = request.args.get("limit", 20, type=int)
     limit = max(1, min(limit or 20, 100))
-    transactions = get_recent_transactions(g.user["id"], limit=limit)
+    transactions = get_recent_transactions(g.user["id"], limit=limit, **filters)
     return jsonify({"transactions": transactions, "count": len(transactions)})
 # ===== END STEP5 TRANSACTION-HISTORY =====
 
@@ -282,11 +381,19 @@ def api_profile_history():
 @app.route("/profile")
 @login_required
 def profile():
-    stats = get_summary_stats(g.user["id"])
-    breakdown = get_category_breakdown(g.user["id"])
-    recent_transactions = get_recent_transactions(g.user["id"], limit=5)
+    filters, error = parse_expense_filters(request.args)
+    stats = get_summary_stats(g.user["id"], **filters)
+    breakdown = get_category_breakdown(g.user["id"], **filters)
+    recent_transactions = get_recent_transactions(g.user["id"], limit=5, **filters)
     expense_count = stats["expense_count"]
     total_spend = stats["total_spend"]
+
+    # Unfiltered count drives the "has any expenses ever" gate so a filtered
+    # empty result never falls through to the no-expenses-yet empty state.
+    if any(filters.values()):
+        total_expense_count = get_summary_stats(g.user["id"])["expense_count"]
+    else:
+        total_expense_count = expense_count
 
     member_since = None
     if g.user["created_at"]:
@@ -301,9 +408,11 @@ def profile():
         "profile.html",
         member_since=member_since,
         expense_count=expense_count,
+        total_expense_count=total_expense_count,
         total_spend=total_spend,
         breakdown=breakdown,
         recent_transactions=recent_transactions,
+        **_filter_template_context(filters, error, url_for("profile")),
     )
 
 

@@ -1,0 +1,38 @@
+{% if error %}
+<div class="auth-error">{{ error }}</div>
+{% endif %}
+
+<div class="filter-bar">
+    <form method="GET" action="{{ filter_action }}" class="filter-form">
+        <div class="filter-field">
+            <label for="filter-category">Category</label>
+            <select id="filter-category" name="category" class="form-input">
+                <option value="">All categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}" {% if filters.category == cat %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-field">
+            <label for="filter-date-from">From</label>
+            <input type="date" id="filter-date-from" name="date_from"
+                   class="form-input" value="{{ filters.date_from or '' }}">
+        </div>
+
+        <div class="filter-field">
+            <label for="filter-date-to">To</label>
+            <input type="date" id="filter-date-to" name="date_to"
+                   class="form-input" value="{{ filters.date_to or '' }}">
+        </div>
+
+        <div class="filter-actions">
+            <button type="submit" class="filter-submit">Apply filters</button>
+            <a class="filter-clear" href="{{ filter_action }}">Clear filters</a>
+        </div>
+    </form>
+</div>
+
+{% if filters_active %}
+<p class="filter-summary">Filtered by {{ filter_summary }}</p>
+{% endif %}
