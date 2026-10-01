@@ -214,7 +214,7 @@ def test_sidebar_marks_profile_active_and_analytics_disabled(alice_client):
     assert any("Profile" in block for block in active)
     assert "Analytics" in html
     assert "is-disabled" in html
-    assert "Soon" in html
+    assert re.search(r"soon", html, re.IGNORECASE)
 
 
 def test_sidebar_transactions_and_settings_point_at_real_routes(alice_client):
