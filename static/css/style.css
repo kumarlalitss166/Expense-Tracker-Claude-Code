@@ -1428,12 +1428,8 @@ a.side-link:hover {
     margin-left: auto;
     font-size: 0.68rem;
     font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--primary);
-    background: var(--primary-soft);
-    padding: 0.12rem 0.45rem;
-    border-radius: 999px;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint);
 }
 
 .app-main {
@@ -1898,12 +1894,13 @@ a.side-link:hover {
 .dash-chip {
     display: inline-flex;
     align-items: center;
-    background: var(--primary-soft);
+    background: rgba(26, 71, 42, 0.08);
     color: var(--primary);
     font-size: 0.78rem;
     font-weight: 600;
     padding: 0.35rem 0.85rem;
     border-radius: 999px;
+    margin-top: auto;
 }
 
 /* --- Transactions table --- */
