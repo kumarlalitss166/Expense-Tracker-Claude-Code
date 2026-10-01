@@ -16,7 +16,24 @@
         </div>
     </header>
 
-    {% if expense_count > 0 %}
+    {% include "partials/filter_bar.html" %}
+
+    {% if total_expense_count == 0 %}
+    <div class="profile-empty">
+        <p class="profile-empty-title">No expenses yet</p>
+        <p class="profile-empty-copy">
+            Once you start tracking spending, your totals and category breakdown
+            will show up here.
+        </p>
+    </div>
+    {% elif filters_active and expense_count == 0 %}
+    <div class="filter-no-match">
+        <p class="filter-no-match-title">No expenses match these filters</p>
+        <p class="filter-no-match-copy">
+            Try a wider date range or <a href="{{ filter_action }}">clear filters</a>.
+        </p>
+    </div>
+    {% else %}
     <div class="profile-stats">
         <div class="profile-stat-card">
             <span class="profile-stat-label">Total spent</span>
@@ -44,14 +61,6 @@
     </div>
 
     {% include "partials/history_section.html" %}
-    {% else %}
-    <div class="profile-empty">
-        <p class="profile-empty-title">No expenses yet</p>
-        <p class="profile-empty-copy">
-            Once you start tracking spending, your totals and category breakdown
-            will show up here.
-        </p>
-    </div>
     {% endif %}
 
     <p class="profile-chip">Expense tracking is coming soon</p>

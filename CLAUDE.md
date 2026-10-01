@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Spendly** is a Flask personal expense tracker built as a step-by-step campus-x learning project. Users will register/sign in, log expenses (amount, category, date, description), and view spending by category and date range. Currency/UI copy is rupee-focused (“Track every rupee”).
 
-Current state: landing, registration, login/logout, the profile dashboard, and profile account management (edit name/email, change password, delete account) are live. Profile expense data is served by reusable helpers and JSON endpoints (history, summary stats, category breakdown) and merged into the profile page. Expense CRUD remains stubs for later steps.
+Current state: landing, registration, login/logout, the profile dashboard, and profile account management (edit name/email, change password, delete account) are live. Profile expense data is served by reusable helpers and JSON endpoints (history, summary stats, category breakdown) and merged into the profile page. Category + date-range filters (Step 6) narrow that snapshot via GET query params on the profile routes and APIs. Expense CRUD remains stubs for later steps.
 
 ## Commands
 
@@ -26,7 +26,9 @@ pip install -r requirements.txt
 # Run the app (http://0.0.0.0:5000 — debug on)
 py app.py
 
-# Tests (pytest + pytest-flask are pinned; no test suite yet)
+# Tests (pytest + pytest-flask are pinned)
+# Root conftest.py repoints database.db.DB_PATH at a temp file before
+# `app` is imported, so runs never touch expense_tracker.db.
 pytest
 pytest path/to/test_file.py
 pytest path/to/test_file.py::test_name
@@ -46,6 +48,8 @@ Single-process Flask app — no blueprints, no ORM, no frontend framework.
 | `templates/` | Jinja2 pages extending `base.html` (`{% block content %}`, optional `head` / `scripts`). `templates/partials/` holds includes that do **not** extend `base.html` |
 | `static/css/style.css` | Global design tokens (`:root` CSS variables) and page styles |
 | `static/js/main.js` | Vanilla JS only (no npm/bundler) — currently the landing “See how it works” YouTube modal |
+| `conftest.py` | Pytest bootstrap — repoints `database.db.DB_PATH` at a temp file **before** `app` is imported (DB isolation) |
+| `tests/` | Pytest suites, one file per feature step (`test_<step>-<slug>.py`) |
 | `docs/` | Session notes, prompts, and UI mockups — not runtime code |
 | `requirements.txt` | Pinned: Flask 3.1.3, Werkzeug 3.1.6, pytest 8.3.5, pytest-flask 1.3.0 |
 
@@ -65,6 +69,10 @@ Registration, login, logout, and `@login_required` are implemented. Sessions sto
 ### Profile expense data
 
 Three helpers — `get_summary_stats()`, `get_category_breakdown()`, `get_recent_transactions()` — are the single source of truth for expense aggregates. `/profile` and the `/api/profile/*` endpoints all call them, so page and JSON numbers cannot diverge. Every expense query filters `WHERE user_id = ?`.
+
+### Profile data filters (Step 6)
+
+Optional `category`, `date_from`, `date_to` query params on `/profile`, `/profile/history`, and the three `/api/profile/*` endpoints narrow that snapshot. `parse_expense_filters()` normalises them once per request (unknown category / malformed dates ignored; reversed range → friendly error + unfiltered snapshot). `_expense_filters_sql()` returns the shared `AND …` fragment so all three helpers apply the same clause shape. UI lives in `templates/partials/filter_bar.html`.
 
 ### Expenses gap
 

@@ -15,6 +15,6 @@
     {% endif %}
 
     <p class="history-view-all">
-        <a href="{{ url_for('profile_history') }}">View all</a>
+        <a href="{{ url_for('profile_history') }}{% if filter_qs %}?{{ filter_qs }}{% endif %}">View all</a>
     </p>
 </div>
