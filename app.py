@@ -727,6 +727,13 @@ def delete_account():
     return redirect(url_for("landing"))
 
 
+@app.route("/analytics")
+@login_required
+def analytics():
+    """Coming-soon Analytics module (signed-in only)."""
+    return render_template("analytics.html")
+
+
 @app.route("/expenses/add")
 def add_expense():
     return "Add expense — coming in Step 7"

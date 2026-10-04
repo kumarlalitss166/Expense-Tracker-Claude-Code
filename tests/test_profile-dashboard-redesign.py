@@ -208,12 +208,13 @@ def test_profile_renders_dashboard_shell(alice_client):
     assert "app-footer" in html
 
 
-def test_sidebar_marks_profile_active_and_analytics_disabled(alice_client):
+def test_sidebar_marks_profile_active_and_links_analytics(alice_client):
     html = _html(alice_client.get("/profile"))
     active = re.findall(r'<a[^>]*class="side-link is-active"[^>]*>.*?</a>', html, re.DOTALL)
     assert any("Profile" in block for block in active)
     assert "Analytics" in html
-    assert "is-disabled" in html
+    assert 'href="/analytics"' in html
+    assert "is-disabled" not in html
     assert re.search(r"soon", html, re.IGNORECASE)
 
 
