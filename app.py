@@ -281,7 +281,10 @@ def login():
     if request.method == "GET":
         if "user_id" in session:
             return redirect(url_for("profile"))
-        return render_template("login.html")
+        success = None
+        if request.args.get("reset") == "1":
+            success = "Your password has been reset. Sign in with your new password."
+        return render_template("login.html", success=success)
 
     email = request.form.get("email", "").strip().lower()
     password = request.form.get("password", "")
@@ -305,6 +308,58 @@ def login():
     session.clear()
     session["user_id"] = row["id"]
     return redirect(url_for("profile"))
+
+
+# SECURITY (learning project): this reset has NO email/OTP verification —
+# anyone who knows an account's email can set a new password for it.
+# Real apps email a single-use token instead. Never ship this to production.
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "GET":
+        if "user_id" in session:
+            return redirect(url_for("profile"))
+        return render_template("forgot_password.html")
+
+    email = request.form.get("email", "").strip().lower()
+    new = request.form.get("new_password", "")
+    confirm = request.form.get("confirm_password", "")
+
+    if not email or not new or not confirm:
+        return render_template(
+            "forgot_password.html", error="Please fill in all fields."
+        ), 400
+    if not is_valid_email(email):
+        return render_template(
+            "forgot_password.html", error="Please enter a valid email address."
+        ), 400
+    if len(new) < 8:
+        return render_template(
+            "forgot_password.html", error="Password must be at least 8 characters."
+        ), 400
+    if new != confirm:
+        return render_template(
+            "forgot_password.html", error="New passwords do not match."
+        ), 400
+
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT id FROM users WHERE email = ?", (email,)
+        ).fetchone()
+        if row is None:
+            return render_template(
+                "forgot_password.html",
+                error="No account found with that email address.",
+            ), 400
+        conn.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (generate_password_hash(new), row["id"]),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return redirect(url_for("login", reset=1))
 
 
 @app.route("/terms")

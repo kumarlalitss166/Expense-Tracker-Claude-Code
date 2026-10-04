@@ -13,6 +13,9 @@
         </div>
 
         <div class="auth-card">
+            {% if success %}
+            <div class="auth-success">{{ success }}</div>
+            {% endif %}
             {% if error %}
             <div class="auth-error">{{ error }}</div>
             {% endif %}
@@ -29,6 +32,9 @@
                     <input type="password" id="password" name="password"
                            class="form-input" placeholder="Your password"
                            required>
+                    <p class="auth-forgot">
+                        <a href="{{ url_for('forgot_password') }}">Forgot password?</a>
+                    </p>
                 </div>
                 <button type="submit" class="btn-submit">Sign in</button>
             </form>
