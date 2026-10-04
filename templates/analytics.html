@@ -5,29 +5,41 @@
 
 {% block content %}
 <section class="coming-soon" aria-labelledby="analytics-title">
+    {# Decorative page blobs — mirrors the Make background accents. #}
+    <div class="coming-soon-blob coming-soon-blob-tl" aria-hidden="true"></div>
+    <div class="coming-soon-blob coming-soon-blob-br" aria-hidden="true"></div>
+
     <div class="coming-soon-card">
-        <div class="coming-soon-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="9"/>
-                <path d="M12 7v5l3 2"/>
-            </svg>
+        {# Corner accents on the card itself. #}
+        <div class="coming-soon-accent coming-soon-accent-tr" aria-hidden="true"></div>
+        <div class="coming-soon-accent coming-soon-accent-bl" aria-hidden="true"></div>
+
+        <div class="coming-soon-icon-wrap">
+            <div class="coming-soon-icon-glow" aria-hidden="true"></div>
+            <div class="coming-soon-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
         </div>
 
-        <p class="coming-soon-badge">Coming soon</p>
+        <p class="coming-soon-badge">Coming Soon</p>
 
         <h1 class="coming-soon-title" id="analytics-title">Advanced Analytics</h1>
 
         <p class="coming-soon-copy">
-            We're working on powerful insights and visualizations
-            to help you understand your spending patterns better.
+            We're working on powerful insights and visualizations to help you understand your spending patterns better.
         </p>
 
-        <div class="coming-soon-dots" aria-hidden="true">
-            <span></span><span></span><span></span>
+        <div class="coming-soon-progress">
+            <div class="coming-soon-dots" aria-hidden="true">
+                <span></span><span></span><span></span>
+            </div>
+            <p class="coming-soon-foot">We're crafting something special</p>
         </div>
 
-        <p class="coming-soon-foot">We're crafting something special</p>
+        <div class="coming-soon-line" aria-hidden="true"></div>
     </div>
 </section>
 {% endblock %}

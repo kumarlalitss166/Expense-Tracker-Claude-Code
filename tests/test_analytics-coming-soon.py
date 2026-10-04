@@ -13,10 +13,10 @@ from werkzeug.security import generate_password_hash
 
 PASSWORD = "password123"
 
-# Exact copy from the Figma Coming Soon wireframe.
-BADGE = "Coming soon"
+# Exact copy from Figma Make ComingSoon.tsx / App.tsx.
+BADGE = "Coming Soon"
 TITLE = "Advanced Analytics"
-BODY = "We're working on powerful insights and visualizations"
+BODY = "We're working on powerful insights and visualizations to help you understand your spending patterns better."
 FOOT = "We're crafting something special"
 
 
