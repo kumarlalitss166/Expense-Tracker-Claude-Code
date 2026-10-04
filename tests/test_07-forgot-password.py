@@ -24,10 +24,7 @@ OLD_PASSWORD = "oldpassword123"
 NEW_PASSWORD = "brandnew45678"
 
 SUCCESS_BANNER = "Your password has been reset. Sign in with your new password."
-SECURITY_HINT = (
-    "Learning project: no email check "
-    "— anyone who knows your email can reset this password."
-)
+SECURITY_HINT_MARKER = "no email check"
 
 ERR_EMPTY = "Please fill in all fields."
 ERR_BAD_EMAIL = "Please enter a valid email address."
@@ -97,7 +94,7 @@ def _link_hrefs(html, text):
 
 def _user_by_email(conn, email):
     return conn.execute(
-        "SELECT id, name, email, password_hash FROM users WHERE email = ?",
+        "SELECT id, name, email, password_hash, password_version FROM users WHERE email = ?",
         (email,),
     ).fetchone()
 
@@ -112,6 +109,9 @@ def clean(db_conn):
     db_conn.execute("DELETE FROM expenses")
     db_conn.execute("DELETE FROM users")
     db_conn.commit()
+    import app as app_module
+
+    app_module._RESET_ATTEMPTS.clear()
     return db_conn
 
 
@@ -150,10 +150,13 @@ def test_forgot_password_form_fields_and_back_to_sign_in_link(client, user):
 
 
 def test_reset_page_shows_learning_project_security_hint(client, user):
-    """DoD: the reset page shows the learning-project security hint."""
+    """DoD: the reset page shows the learning-project security hint.
+
+    Asserts a distinctive substring so template reflow does not break this.
+    """
     resp = client.get("/forgot-password")
     assert resp.status_code == 200
-    assert SECURITY_HINT in _html(resp)
+    assert SECURITY_HINT_MARKER in _html(resp)
 
 
 def test_forgot_password_get_redirects_to_profile_when_signed_in(client, user):
@@ -395,3 +398,102 @@ def test_reset_leaves_other_accounts_untouched(client, clean):
     alice_after = _user_by_email(clean, "alice@example.com")["password_hash"]
     assert check_password_hash(alice_after, NEW_PASSWORD)
     assert alice_id != bob_id
+
+
+# ------------------------------------------------------------------ #
+# Review follow-ups: session invalidation, signed-in POST, throttle   #
+# ------------------------------------------------------------------ #
+
+def test_post_while_signed_in_redirects_to_profile(client, clean, user):
+    """GET and POST are symmetric: a signed-in user cannot use the reset form."""
+    _login(client, "alice@example.com", OLD_PASSWORD)
+    before = _user_by_email(clean, "alice@example.com")["password_hash"]
+
+    resp = client.post(
+        "/forgot-password",
+        data={
+            "email": "alice@example.com",
+            "new_password": NEW_PASSWORD,
+            "confirm_password": NEW_PASSWORD,
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert urlparse(resp.headers["Location"]).path == "/profile"
+    assert _user_by_email(clean, "alice@example.com")["password_hash"] == before
+
+
+def test_reset_bumps_password_version(client, clean, user):
+    """Reset increments password_version so old sessions can be dropped."""
+    before = _user_by_email(clean, "alice@example.com")["password_version"]
+    assert _reset(client, "alice@example.com", NEW_PASSWORD).status_code == 302
+    after = _user_by_email(clean, "alice@example.com")["password_version"]
+    assert after == before + 1
+
+
+def test_existing_session_is_invalidated_after_reset(client, app, clean, user):
+    """A session minted before the reset must not survive it (stolen-cookie remediation)."""
+    _login(client, "alice@example.com", OLD_PASSWORD)
+    assert client.get("/profile").status_code == 200
+
+    other = app.test_client()
+    assert _reset(other, "alice@example.com", NEW_PASSWORD).status_code == 302
+
+    resp = client.get("/profile", follow_redirects=False)
+    assert resp.status_code == 302
+    assert urlparse(resp.headers["Location"]).path == "/login"
+
+
+def test_password_version_mismatch_clears_session(client, app, clean, user):
+    """load_user drops any session whose pw_version no longer matches the row."""
+    _login(client, "alice@example.com", OLD_PASSWORD)
+    clean.execute(
+        "UPDATE users SET password_version = password_version + 10 WHERE email = ?",
+        ("alice@example.com",),
+    )
+    clean.commit()
+
+    resp = client.get("/profile", follow_redirects=False)
+    assert resp.status_code == 302
+    assert urlparse(resp.headers["Location"]).path == "/login"
+
+
+def test_reset_form_action_uses_url_for(client, user):
+    """Form action is generated from the route, not a hardcoded path."""
+    html = _html(client.get("/forgot-password"))
+    m = re.search(r'<form[^>]*action="([^"]*)"', html)
+    assert m, "form must declare an action"
+    assert urlparse(m.group(1)).path == "/forgot-password"
+
+
+def test_auth_banners_carry_assistive_roles(client, user):
+    """Success/error banners announce themselves to assistive tech."""
+    ok = _html(client.get("/login?reset=1"))
+    assert 'class="auth-success"' in ok and 'role="status"' in ok
+
+    bad = client.post("/forgot-password", data={}, follow_redirects=False)
+    html = _html(bad)
+    assert 'class="auth-error"' in html and 'role="alert"' in html
+
+
+def test_reset_endpoint_is_rate_limited(client, app, clean, user):
+    """More than the allowed resets in the window returns 429."""
+    import app as app_module
+
+    limit = app_module._RESET_LIMIT
+    for i in range(limit):
+        resp = _reset(client, "alice@example.com", NEW_PASSWORD)
+        assert resp.status_code == 302, f"attempt {i} should succeed: {resp.status_code}"
+
+    resp = client.post(
+        "/forgot-password",
+        data={
+            "email": "alice@example.com",
+            "new_password": NEW_PASSWORD,
+            "confirm_password": NEW_PASSWORD,
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 429
+    assert "Too many reset attempts" in _html(resp)
+

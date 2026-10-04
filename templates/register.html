@@ -14,7 +14,7 @@
 
         <div class="auth-card">
             {% if error %}
-            <div class="auth-error">{{ error }}</div>
+            <div class="auth-error" role="alert">{{ error }}</div>
             {% endif %}
 
             <form method="POST" action="/register">

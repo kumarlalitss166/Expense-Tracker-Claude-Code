@@ -17,14 +17,14 @@ This step deliberately uses **no OTP, no emailed link, and no confirmation token
 ## Routes
 
 - `GET /forgot-password` — render `forgot_password.html` — public. If `"user_id" in session`, redirect to `/profile`
-- `POST /forgot-password` — validate, look up user by email, `UPDATE` `password_hash`, redirect to `/login?reset=1` — public
+- `POST /forgot-password` — validate, look up user by email, `UPDATE` `password_hash` **and bump `password_version`**, redirect to `/login?reset=1` — public. Signed-in POST also redirects to `/profile` (symmetric with GET). Throttled: 5 POSTs per IP per 60s → `429` `"Too many reset attempts. Please wait a minute and try again."`
 - `GET /login` — **modified**: when `request.args.get("reset") == "1"`, pass `success="Your password has been reset. Sign in with your new password."` into `login.html` — public
 
-No other routes change. `/profile/password` (signed-in change-password) stays as-is.
+No other routes change. `/profile/password` (signed-in change-password) also bumps `password_version` and refreshes `session["pw_version"]` so the current session survives.
 
 ## Database changes
 
-No database changes. Reset only writes `users.password_hash`. Do **not** add tokens, reset timestamps, or OTP tables.
+`users.password_version INTEGER NOT NULL DEFAULT 1` — bumped on every password write. Sessions store `pw_version`; `load_user()` clears the session when it no longer matches. Do **not** add reset tokens, reset timestamps, or OTP tables.
 
 ## Templates
 
@@ -76,8 +76,13 @@ No new dependencies.
   4. `new_password != confirm_password` → `"New passwords do not match."`
   5. No `users` row for that email → `"No account found with that email address."`
 - Unknown email uses the **explicit** message above (learning project). Do not swap it for a generic string
-- Write only `password_hash` (`UPDATE users SET password_hash = ? WHERE id = ?`) — never plaintext, never `name` / `email`
+- Write only `password_hash` (plus the `password_version` bump) — never plaintext, never `name` / `email`
 - Success: `redirect(url_for("login", reset=1))` → `302` Location path `/login`, query `reset=1`. **Do not** set session / auto-login
+- Sessions must not survive a password reset: bump `password_version` on write; `load_user()` drops sessions whose `pw_version` disagrees
+- Throttle `POST /forgot-password` (5 / IP / 60s, in-memory) — `429` with a friendly error when exceeded
+- Signed-in `POST /forgot-password` redirects to `/profile`, same as GET
+- Form `action` uses `url_for('forgot_password')`
+- Auth banners use `role="status"` (`.auth-success`) and `role="alert"` (`.auth-error`)
 - `login()` GET success string (when `reset == "1"`): `"Your password has been reset. Sign in with your new password."` (`reset` values other than `"1"` → no banner)
 - Keep the `SECURITY (learning project): …` comment above the `@app.route("/forgot-password")` decorator
 - Keep the visible `form-hint` security line on the page
@@ -99,4 +104,7 @@ No new dependencies.
 - [x] An email with no account returns `400` and `"No account found with that email address."`
 - [x] Email matching is case-insensitive (stored lowercased emails still resolve)
 - [x] The reset page shows the learning-project security hint
+- [x] Existing sessions are invalidated after a reset (`password_version` mismatch)
+- [x] Signed-in `POST /forgot-password` redirects to `/profile`
+- [x] Repeated resets from one IP hit the throttle (`429`)
 - [x] `pytest tests/test_07-forgot-password.py` passes; full suite still passes
