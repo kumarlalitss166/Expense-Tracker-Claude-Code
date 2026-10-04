@@ -1,6 +1,7 @@
 import os
 import re
 import sqlite3
+import time
 from datetime import datetime
 from functools import wraps
 from urllib.parse import urlencode
@@ -213,13 +214,15 @@ def load_user():
     conn = get_db()
     try:
         g.user = conn.execute(
-            "SELECT id, name, email, created_at FROM users WHERE id = ?",
+            "SELECT id, name, email, created_at, password_version FROM users WHERE id = ?",
             (session["user_id"],),
         ).fetchone()
     finally:
         conn.close()
-    if g.user is None:
+    # Drop sessions minted against an older password (stolen-cookie remediation).
+    if g.user is None or session.get("pw_version") != g.user["password_version"]:
         session.clear()
+        g.user = None
 
 
 # ------------------------------------------------------------------ #
@@ -297,7 +300,8 @@ def login():
     conn = get_db()
     try:
         row = conn.execute(
-            "SELECT id, password_hash FROM users WHERE email = ?", (email,)
+            "SELECT id, password_hash, password_version FROM users WHERE email = ?",
+            (email,),
         ).fetchone()
     finally:
         conn.close()
@@ -307,7 +311,26 @@ def login():
 
     session.clear()
     session["user_id"] = row["id"]
+    session["pw_version"] = row["password_version"]
     return redirect(url_for("profile"))
+
+
+# Lightweight throttle for the public reset form (in-memory, per process).
+_RESET_ATTEMPTS = {}  # ip -> [timestamps]
+_RESET_LIMIT = 5
+_RESET_WINDOW_SECONDS = 60
+
+
+def _reset_throttled(ip, limit=_RESET_LIMIT, window=_RESET_WINDOW_SECONDS):
+    """True when this IP has posted too many resets inside the window."""
+    now = time.time()
+    hits = [t for t in _RESET_ATTEMPTS.get(ip, []) if now - t < window]
+    if len(hits) >= limit:
+        _RESET_ATTEMPTS[ip] = hits
+        return True
+    hits.append(now)
+    _RESET_ATTEMPTS[ip] = hits
+    return False
 
 
 # SECURITY (learning project): this reset has NO email/OTP verification —
@@ -315,10 +338,16 @@ def login():
 # Real apps email a single-use token instead. Never ship this to production.
 @app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
+    if "user_id" in session:
+        return redirect(url_for("profile"))
     if request.method == "GET":
-        if "user_id" in session:
-            return redirect(url_for("profile"))
         return render_template("forgot_password.html")
+
+    if _reset_throttled(request.remote_addr or "unknown"):
+        return render_template(
+            "forgot_password.html",
+            error="Too many reset attempts. Please wait a minute and try again.",
+        ), 429
 
     email = request.form.get("email", "").strip().lower()
     new = request.form.get("new_password", "")
@@ -351,8 +380,10 @@ def forgot_password():
                 "forgot_password.html",
                 error="No account found with that email address.",
             ), 400
+        # password_version bump invalidates every existing session on next request.
         conn.execute(
-            "UPDATE users SET password_hash = ? WHERE id = ?",
+            "UPDATE users SET password_hash = ?, password_version = password_version + 1 "
+            "WHERE id = ?",
             (generate_password_hash(new), row["id"]),
         )
         conn.commit()
@@ -663,13 +694,19 @@ def change_password():
             ), 400
 
         conn.execute(
-            "UPDATE users SET password_hash = ? WHERE id = ?",
+            "UPDATE users SET password_hash = ?, password_version = password_version + 1 "
+            "WHERE id = ?",
             (generate_password_hash(new), g.user["id"]),
         )
+        new_version = conn.execute(
+            "SELECT password_version FROM users WHERE id = ?", (g.user["id"],)
+        ).fetchone()["password_version"]
         conn.commit()
     finally:
         conn.close()
 
+    # Keep the current session alive; other sessions die on next request.
+    session["pw_version"] = new_version
     return redirect(url_for("profile"))
 
 

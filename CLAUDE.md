@@ -68,7 +68,7 @@ Single-process Flask app — no blueprints, no ORM, no frontend framework.
 
 Registration, login, logout, and `@login_required` are implemented. Sessions store `user_id` only; passwords are Werkzeug-hashed. `/profile` is the first logged-in page (identity + spending snapshot). Account management is on `/profile/edit`, `/profile/password`, and `POST /profile/delete`. Email format validation is the shared `is_valid_email()` helper used by both `/register` and `/profile/edit`.
 
-`/forgot-password` is the unauthenticated reset flow (email + new password + confirm, no OTP/email check). Success redirects to `/login?reset=1`, which renders a success banner via the `success=` template kwarg (the app has no `flash()`). Same validation strings as `/profile/password`, plus `"No account found with that email address."`.
+`/forgot-password` is the unauthenticated reset flow (email + new password + confirm, no OTP/email check). Success redirects to `/login?reset=1`, which renders a success banner via the `success=` template kwarg (the app has no `flash()`). Same validation strings as `/profile/password`, plus `"No account found with that email address."`. Password writes bump `users.password_version`; `load_user()` drops sessions whose `session["pw_version"]` no longer matches, so a reset invalidates older cookies. `POST /forgot-password` is rate-limited (5/IP/60s) and redirects signed-in users to `/profile`.
 
 ### Profile expense data
 

@@ -14,10 +14,10 @@
 
         <div class="auth-card">
             {% if success %}
-            <div class="auth-success">{{ success }}</div>
+            <div class="auth-success" role="status">{{ success }}</div>
             {% endif %}
             {% if error %}
-            <div class="auth-error">{{ error }}</div>
+            <div class="auth-error" role="alert">{{ error }}</div>
             {% endif %}
 
             <form method="POST" action="/login">

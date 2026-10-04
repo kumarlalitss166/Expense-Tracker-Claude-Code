@@ -41,10 +41,17 @@ def init_db():
                 name TEXT NOT NULL,
                 email TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
+                password_version INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT DEFAULT (datetime('now'))
             )
             """
         )
+        # Older DBs created before password_version existed.
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+        if "password_version" not in cols:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN password_version INTEGER NOT NULL DEFAULT 1"
+            )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS expenses (
