@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Add Expense · Spendly{% endblock %}
+{% block body_class %}add-expense-body{% endblock %}
+
+{% block content %}
+<section class="coming-soon" aria-labelledby="add-expense-title">
+    {# Decorative page blobs — mirrors the Make background accents. #}
+    <div class="coming-soon-blob coming-soon-blob-tl" aria-hidden="true"></div>
+    <div class="coming-soon-blob coming-soon-blob-br" aria-hidden="true"></div>
+
+    <div class="coming-soon-card">
+        {# Corner accents on the card itself. #}
+        <div class="coming-soon-accent coming-soon-accent-tr" aria-hidden="true"></div>
+        <div class="coming-soon-accent coming-soon-accent-bl" aria-hidden="true"></div>
+
+        <div class="coming-soon-icon-wrap">
+            <div class="coming-soon-icon-glow" aria-hidden="true"></div>
+            <div class="coming-soon-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+        </div>
+
+        <p class="coming-soon-badge">Coming Soon</p>
+
+        <h1 class="coming-soon-title" id="add-expense-title">Add Expense</h1>
+
+        <p class="coming-soon-copy">
+            We're building a simple way to log every rupee you spend — amount, category, date, and a note — so your dashboard stays up to date.
+        </p>
+
+        <div class="coming-soon-progress">
+            <div class="coming-soon-dots" aria-hidden="true">
+                <span></span><span></span><span></span>
+            </div>
+            <p class="coming-soon-foot">We're crafting something special</p>
+        </div>
+
+        <div class="coming-soon-line" aria-hidden="true"></div>
+    </div>
+</section>
+{% endblock %}

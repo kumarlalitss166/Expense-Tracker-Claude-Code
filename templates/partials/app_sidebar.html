@@ -20,6 +20,17 @@
             </a>
         </li>
         <li>
+            <a href="{{ url_for('add_expense') }}"
+               class="side-link{% if request.endpoint == 'add_expense' %} is-active{% endif %}">
+                <svg class="side-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/><path d="M12 8v8"/><path d="M8 12h8"/>
+                </svg>
+                <span>Add expense</span>
+                <span class="side-tag">SOON</span>
+            </a>
+        </li>
+        <li>
             <a href="{{ url_for('analytics') }}"
                class="side-link{% if request.endpoint == 'analytics' %} is-active{% endif %}">
                 <svg class="side-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"

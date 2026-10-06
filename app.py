@@ -735,8 +735,10 @@ def analytics():
 
 
 @app.route("/expenses/add")
+@login_required
 def add_expense():
-    return "Add expense — coming in Step 7"
+    """Coming-soon Add Expense module (signed-in only)."""
+    return render_template("expense_add.html")
 
 
 @app.route("/expenses/<int:id>/edit")
